@@ -11,6 +11,7 @@
 | [`step14b-runbook.md`](step14b-runbook.md) | STEP 14B runbook to execute on a real Linux ARM64 host. **Postponed** until such a host exists. |
 | [`final-demo-checklist.md`](final-demo-checklist.md) | The 3–5 minute hackathon demo sequence (A–L) with timing budget and failure fallbacks (STEP 16). |
 | [`final-validation.md`](final-validation.md) | STEP 16 final validation report: environment, model integrity, tests, smoke test, evidence, documentation, git status. |
+| [`cloud-deploy.md`](cloud-deploy.md) | Cloud deployment runbook (ARM64 Graviton path A / AMD64 VPS path B): frontend service, VITE_API_URL, CORS, firewall, verification. **Not yet executed.** |
 
 ## Benchmark methodology
 

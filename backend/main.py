@@ -140,13 +140,23 @@ def create_app() -> FastAPI:
         ],
     )
 
+    # Local development origins always allowed, plus any extra origins from
+    # ARMINFERX_CORS_ORIGINS (comma-separated). The env override is required
+    # for cloud deployment, where the frontend is served from a different
+    # host than the API (see docs/cloud-deploy.md).
+    cors_defaults = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:4173",  # vite preview (production build check)
+    ]
+    cors_extra = [
+        origin.strip()
+        for origin in _env("ARMINFERX_CORS_ORIGINS", "").split(",")
+        if origin.strip()
+    ]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:3000",
-            "http://localhost:5173",
-            "http://localhost:4173",  # vite preview (production build check)
-        ],
+        allow_origins=list(dict.fromkeys(cors_defaults + cors_extra)),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

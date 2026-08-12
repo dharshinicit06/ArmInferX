@@ -1,0 +1,21 @@
+# =============================================================================
+# ArmInferX — Git attributes
+# =============================================================================
+# Batch files must ALWAYS use CRLF line endings: cmd.exe's label scanner and
+# `goto` handling are line-ending-sensitive, and LF-only .bat files can
+# misbehave on some Windows builds. `eol=crlf` forces CRLF on checkout
+# regardless of core.autocrlf settings on the cloning machine.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Text files: normalize to LF in the repo (typical for this project).
+*.py text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.css text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+Dockerfile text eol=lf
+*.dockerignore text eol=lf

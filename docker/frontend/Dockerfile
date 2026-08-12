@@ -1,51 +1,47 @@
 # =============================================================================
-# ArmInferX — Frontend Dockerfile (placeholder)
+# ArmInferX — Frontend Dockerfile (production static build)
 # =============================================================================
 #
-# STATUS: Not configured yet. This file currently contains only planning
-# comments. It will be filled in during the Docker setup phase (Phase 6 of
-# the roadmap).
+# Multi-stage build: a Node stage runs `npm run build` (Vite), then a minimal
+# nginx image serves the static dist/ output. No Node runtime in production.
 #
-# PURPOSE
-# -------
-# Builds a Docker image for the React + Vite frontend located in /frontend.
-# Two common strategies exist — pick one during the setup phase:
+# The frontend calls the backend at an ABSOLUTE URL (API_URL in App.jsx, which
+# reads VITE_API_URL at build time), so the build must know where the backend
+# lives. Build from the repo root:
 #
-#   A) DEV / STATIC  — build the app with `npm run build` and serve the
-#      resulting static files (dist/) with a lightweight web server such as
-#      nginx or caddy. Best for production: small image, no Node runtime.
+#   export VITE_API_URL=http://<SERVER_IP>:8000
+#   docker compose build frontend          # or:
+#   docker build -f docker/frontend/Dockerfile \
+#       --build-arg VITE_API_URL=http://<SERVER_IP>:8000 \
+#       -t arminferx-frontend .
 #
-#   B) MULTI-STAGE   — one stage installs Node and runs the Vite build; a
-#      second stage copies dist/ into a minimal runtime image. Recommended,
-#      as it keeps the final image small.
-#
-# WHAT WILL GO HERE LATER
-# -----------------------
-# 1. BASE IMAGE
-#    node:22-alpine (or similar) for the build stage; nginx:alpine (or
-#    caddy) for the static serving stage.
-#
-# 2. DEPENDENCIES
-#    - Copy frontend/package.json (and package-lock.json when committed)
-#      and run `npm ci` to install locked dependencies reproducibly.
-#
-# 3. BUILD
-#    - Copy the frontend source and run `npm run build` to produce dist/.
-#
-# 4. RUNTIME
-#    - Serve dist/ on port 80 with nginx (or the chosen server).
-#    - If the SPA gains client-side routing later, the server must include
-#      a fallback to index.html for unknown routes.
-#
-# EXAMPLE SKELETON (do not enable yet):
-#
-#   FROM node:22-alpine AS build
-#   WORKDIR /app
-#   COPY frontend/package.json ./
-#   RUN npm ci
-#   COPY frontend/ .
-#   RUN npm run build
-#
-#   FROM nginx:alpine
-#   COPY --from=build /app/dist /usr/share/nginx/html
-#   EXPOSE 80
+# The backend must in turn allow this frontend's origin (ARMINFERX_CORS_ORIGINS
+# env var, see docs/cloud-deploy.md).
+# =============================================================================
+
+FROM node:22-alpine AS build
+
+# The API base URL baked into the JS bundle at build time.
+ARG VITE_API_URL=http://localhost:8000
+ENV VITE_API_URL=$VITE_API_URL
+
+WORKDIR /app
+
+# package.json first for layer caching; package-lock.json is gitignored, so
+# `npm install` (not `npm ci`) is correct for fresh clones.
+COPY frontend/package.json ./
+RUN npm install --no-audit --no-fund
+
+COPY frontend/ ./
+RUN npm run build
+
+# -- Runtime stage: static files only -----------------------------------------
+FROM nginx:1.27-alpine AS runtime
+
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY docker/frontend/nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD wget -qO- http://127.0.0.1/ >/dev/null || exit 1

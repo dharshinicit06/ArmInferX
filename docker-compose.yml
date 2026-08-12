@@ -36,10 +36,33 @@ services:
       # (engine defaults untouched: n_ctx=2048, n_threads=8, n_gpu_layers=0).
       ARMINFERX_DEFAULT_ENGINE: llamacpp-optimized
       ARMINFERX_DEVICE: cpu
+      # Browser origins allowed by the API. Local dev defaults are always
+      # enabled; add the deployed frontend origin for cloud deployments, e.g.
+      #   ARMINFERX_CORS_ORIGINS=http://<SERVER_IP>:8080,http://<SERVER_IP>:80
+      ARMINFERX_CORS_ORIGINS: ${ARMINFERX_CORS_ORIGINS:-}
     volumes:
       # Same Q4_K_M GGUF file as STEP 9/11, mounted read-only at the engine's
       # default path (/app/models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf).
       - ./models/gguf:/app/models/gguf:ro
       # Optional: persist benchmark/generate records on the host.
       # - ./results:/app/results
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Frontend (static build served by nginx). VITE_API_URL tells the built JS
+  # where the backend lives and is baked in at image build time:
+  #   export VITE_API_URL=http://<SERVER_IP>:8000 && docker compose build frontend
+  # See docs/cloud-deploy.md.
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    image: arminferx-frontend:latest
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
     restart: unless-stopped

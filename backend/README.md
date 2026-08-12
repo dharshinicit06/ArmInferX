@@ -72,6 +72,37 @@ uvicorn main:app --reload --port 8000
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
+## Windows troubleshooting: llama.dll fails to load
+
+Symptom: `import llama_cpp` raises
+`RuntimeError: Failed to load shared library '...\llama_cpp\lib\llama.dll': Could not
+find module ... (or one of its dependencies)`.
+
+Root cause (seen on this dev machine): the llama.cpp DLLs are built with MSVC
+OpenMP and import **`VCOMP140.DLL`** (the VC++ OpenMP runtime). If it is absent
+from `C:\Windows\System32` (e.g. the VC++ 2015-2022 redistributable was never
+installed or was removed), the DLLs cannot load — even though they are present
+and are valid x86-64 binaries.
+
+Fix (no rebuild needed — keeps `llama-cpp-python==0.3.34`):
+
+1. Obtain a **64-bit** `vcomp140.dll` (part of the VC++ redistributable; many
+   apps bundle it, e.g. `C:\Program Files\Cisco Packet Tracer ...\bin\` —
+   verify with `file` that it is `PE32+ ... x86-64`, not the 32-bit copy in
+   `C:\Windows\SysWOW64\`).
+2. Copy it next to the package DLLs so `load_shared_library` finds it:
+   `cp <path>/vcomp140.dll .venv/Lib/site-packages/llama_cpp/lib/`
+3. Verify: `python -c "from llama_cpp import Llama; print('ok')"`
+
+No application code changes are needed for this fix.
+
+Automated alternative: `scripts/fix_llama_dll.py` does steps 1–3 for you — it
+checks whether `import llama_cpp` works, locates an x86-64 `vcomp140.dll` on
+the machine (System32, Visual Studio folders, or common app `bin/` dirs) and
+copies it into the package `lib/` folder. Run from the repo root with the
+project venv: `backend\.venv\Scripts\python.exe scripts\fix_llama_dll.py`
+(exits 0 when `import llama_cpp` already works; idempotent).
+
 ## Endpoints
 
 | Method | Path | Description |
