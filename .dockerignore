@@ -1,0 +1,45 @@
+# =============================================================================
+# ArmInferX — Docker build context exclusions
+# =============================================================================
+# Keeps the build context small and prevents host-local state from leaking
+# into the image. The Q4_K_M GGUF is intentionally NOT baked into the image:
+# it is bind-mounted at runtime (see docker-compose.yml and
+# docs/arm64-deployment.md).
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# --- Node / frontend (not needed by the backend image) ---
+node_modules/
+frontend/dist/
+
+# --- Models: mounted at runtime, never copied ---
+models/
+
+# --- Generated artifacts ---
+results/
+benchmark-output/
+*.log
+
+# --- Git / IDE / secrets ---
+.git/
+.gitignore
+.github/
+.vscode/
+.idea/
+.env
+.env.*
+*.pem
+*.key
+
+# --- Tests / scripts not needed in the image ---
+tests/
+# The STEP 9/11 benchmark driver IS copied deliberately (COPY in the
+# Dockerfile); exclude everything else under scripts/ (parent dir itself is
+# NOT excluded so the driver can be re-included below).
+scripts/*
+!scripts/run_llamacpp_benchmark.py

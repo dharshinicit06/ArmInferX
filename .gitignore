@@ -1,0 +1,208 @@
+# =============================================================================
+# ArmInferX — Comprehensive .gitignore
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 1. PYTHON
+#    Why: Python compiles .py files into bytecode .pyc files in __pycache__/.
+#    These are machine-specific and must never be committed.
+# -----------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# -----------------------------------------------------------------------------
+# 2. PYTHON PACKAGING / DISTRIBUTION
+#    Why: setuptools/pip generate these during `python setup.py sdist` or
+#    `pip install -e .`. They are build artifacts, not source.
+# -----------------------------------------------------------------------------
+*.egg
+*.egg-info/
+*.whl
+*.tar.gz
+*.zip
+eggs/
+sdist/
+wheels/
+*.spec
+
+# -----------------------------------------------------------------------------
+# 3. PYTHON TESTING / COVERAGE
+#    Why: pytest cache, coverage data, mypy cache, and tox working dirs are
+#    all regenerable local state.
+# -----------------------------------------------------------------------------
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+
+# -----------------------------------------------------------------------------
+# 4. VIRTUAL ENVIRONMENTS
+#    Why: venv/conda environments contain platform-specific binaries and
+#    thousands of installed packages. They are reconstructed from
+#    requirements.txt or pyproject.toml.
+# -----------------------------------------------------------------------------
+.venv/
+venv/
+env/
+ENV/
+.python-version
+.python-version-dev
+
+# -----------------------------------------------------------------------------
+# 5. NODE.JS / NPM
+#    Why: node_modules/ is enormous (hundreds of MB), platform-specific, and
+#    fully reconstructible from package-lock.json via `npm ci`.
+# -----------------------------------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+yarn.lock
+pnpm-lock.yaml
+package-lock.json
+
+# -----------------------------------------------------------------------------
+# 6. REACT / VITE BUILD OUTPUT
+#    Why: Vite compiles JSX/TSX into optimized bundles in dist/. These are
+#    build artifacts served in production, not source.
+# -----------------------------------------------------------------------------
+dist/
+dist-ssr/
+*.local
+
+# -----------------------------------------------------------------------------
+# 7. VITE / FRONTEND CACHE
+#    Why: Vite dev server and build cache are local performance optimizations.
+# -----------------------------------------------------------------------------
+.vite/
+*.tsbuildinfo
+
+# -----------------------------------------------------------------------------
+# 8. ENVIRONMENT VARIABLES / SECRETS
+#    Why: .env files contain API keys, database URLs, and credentials.
+#    Committing these is a critical security risk. Only .env.example
+#    (with placeholder values) should ever be committed.
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+
+# -----------------------------------------------------------------------------
+# 9. CERTIFICATES / PRIVATE KEYS
+#    Why: TLS certs and private keys must never be in version control.
+#    A leaked key compromises the entire security of the system.
+# -----------------------------------------------------------------------------
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# -----------------------------------------------------------------------------
+# 10. DOCKER
+#     Why: Docker builds produce large intermediate images and compose may
+#     generate runtime state. The Dockerfiles themselves are committed;
+#     the artifacts they produce are not.
+# -----------------------------------------------------------------------------
+.docker/
+docker-compose.override.yml
+
+# -----------------------------------------------------------------------------
+# 11. IDE / EDITOR — VS Code
+#     Why: VS Code stores workspace-specific settings (extensions, debug
+#     configs, local history) in .vscode/. These are personal preferences
+#     that differ between developers and should not be shared.
+# -----------------------------------------------------------------------------
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# -----------------------------------------------------------------------------
+# 12. IDE / EDITOR — JetBrains (PyCharm, IntelliJ, WebStorm)
+#     Why: Same reason as VS Code — project-specific IDE state is personal
+#     and not portable across machines.
+# -----------------------------------------------------------------------------
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# -----------------------------------------------------------------------------
+# 13. OS-GENERATED FILES
+#     Why: macOS, Windows, and Linux each generate metadata files that
+#     have nothing to do with the project source.
+# -----------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/# -----------------------------------------------------------------------------
+# 14. PROJECT-SPECIFIC — MODELS
+#    Why: ML model files (ONNX, GGUF, TFLite, PyTorch .bin) are hundreds
+#    of MB to multiple GB. They belong in cloud storage (S3, HuggingFace)
+#    or a model registry, never in git.
+# -----------------------------------------------------------------------------
+models/*.onnx
+models/*.gguf
+# Nested model dirs too (models/gguf/*.gguf): `git add .` must never stage the
+# ~2 GB Q4_K_M GGUF or the ~6.5 GB FP16 shards (STEP 15 cleanup audit).
+models/**/*.gguf
+models/**/*.onnx
+models/*.tflite
+models/**/*.tflite
+models/*.bin
+models/**/*.bin
+models/*.pt
+models/**/*.pt
+models/*.pth
+models/**/*.pth
+models/*.safetensors
+models/**/*.safetensors
+models/*.h5
+models/**/*.h5
+models/*.pb
+models/**/*.pb
+models/downloaded/
+# HuggingFace download cache left inside models/gguf/.cache (artifact only).
+models/**/.cache/
+
+# -----------------------------------------------------------------------------
+# 15. PROJECT-SPECIFIC — BENCHMARK RESULTS
+#     Why: Results are regenerable data artifacts (CSV, JSON, logs).
+#     Storing them in git bloats history. They should be exported to
+#     cloud storage or a database for persistence.
+# -----------------------------------------------------------------------------
+results/
+benchmark-output/
+*.csv
+*.log
+
+# -----------------------------------------------------------------------------
+# 16. PROJECT-SPECIFIC — LARGE DATA
+#     Why: Training data, datasets, and audio/image samples are too large
+#     for git. Use DVC, S3, or HuggingFace Datasets instead.
+# -----------------------------------------------------------------------------
+data/
+datasets/
+*.parquet
+*.arrow
+*.record
+
+# -----------------------------------------------------------------------------
+# 17. PROJECT-SPECIFIC — ARM CROSS-COMPILATION
+#     Why: Cross-compilation toolchains and sysroots are platform-specific
+#     and large. Managed separately, not committed.
+# -----------------------------------------------------------------------------
+toolchains/
+sysroot-*/

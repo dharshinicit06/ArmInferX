@@ -1,0 +1,357 @@
+{
+  "project": {
+    "name": "ArmInferX",
+    "description": "AI Inference Optimization Studio for Arm64 Cloud",
+    "phase": "STEP 11 - Optimization Evidence, Validation & Benchmark Reporting",
+    "tool_versions": {
+      "python": "3.13.14",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "llama_cpp_python": "0.3.34",
+      "torch": "2.13.0+cpu",
+      "transformers": "5.14.1",
+      "psutil": "7.2.2"
+    }
+  },
+  "hardware": {
+    "total_ram_gb": 7.63,
+    "cpu_logical_count": 8,
+    "cpu_physical_count": 6,
+    "platform": "Windows-11-10.0.26200-SP0",
+    "machine": "AMD64"
+  },
+  "baseline": {
+    "status": "not_feasible",
+    "classification": "hardware memory constraint",
+    "engine_id": "transformers-baseline",
+    "runtime": "transformers",
+    "model": "Qwen2.5-3B-Instruct",
+    "dtype": "float16",
+    "inference_completed": false,
+    "reason": "Model loading started but could not complete: the feasibility watchdog detected severe memory pressure (system available RAM dropped to 159-263 MB on a machine with 7.63 GiB total) and aborted the run safely. No FP16 inference was performed.",
+    "watchdog_abort": {
+      "available_ram_at_abort_mb": 159,
+      "reported_available_ram_range_mb": [
+        159,
+        263
+      ],
+      "trigger": "system available RAM below the 300 MB severe-paging alarm",
+      "total_ram_gb": 7.63
+    },
+    "label": "Reference FP16 model \u2014 inference infeasible on current 7.63 GiB RAM machine"
+  },
+  "optimized": {
+    "engine_id": "llamacpp-optimized",
+    "runtime": "llama.cpp",
+    "model_id": "qwen2.5-3b-instruct",
+    "quantization": "Q4_K_M",
+    "status": "validated",
+    "label": "Validated optimized model \u2014 CPU inference successfully completed"
+  },
+  "model": {
+    "q4_k_m": {
+      "file_name": "qwen2.5-3b-instruct-q4_k_m.gguf",
+      "file_size_bytes": 2104932768,
+      "gguf_version": 3,
+      "tensor_count": 435,
+      "parameter_count": 3397103616,
+      "file_type": {
+        "code": 15,
+        "name": "Q4_K_M"
+      },
+      "quantization": "Q4_K",
+      "architecture": "qwen2",
+      "model_name": "qwen2.5-3b-instruct",
+      "quantization_version": 2,
+      "context_length": 32768,
+      "tensor_types": {
+        "Q6_K": 37,
+        "Q4_K": 217,
+        "F32": 181
+      },
+      "sha256": "626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d",
+      "metadata": {
+        "general.architecture": "qwen2",
+        "general.type": "model",
+        "general.name": "qwen2.5-3b-instruct",
+        "general.version": "v0.1-v0.1",
+        "general.finetune": "qwen2.5-3b-instruct",
+        "general.size_label": "3.4B",
+        "qwen2.block_count": 36,
+        "qwen2.context_length": 32768,
+        "qwen2.embedding_length": 2048,
+        "qwen2.feed_forward_length": 11008,
+        "qwen2.attention.head_count": 16,
+        "qwen2.attention.head_count_kv": 2,
+        "qwen2.rope.freq_base": 1000000.0,
+        "qwen2.attention.layer_norm_rms_epsilon": 9.999999974752427e-07,
+        "general.file_type": 15,
+        "tokenizer.ggml.model": "gpt2",
+        "tokenizer.ggml.pre": "qwen2",
+        "tokenizer.ggml.eos_token_id": 151645,
+        "tokenizer.ggml.padding_token_id": 151643,
+        "tokenizer.ggml.bos_token_id": 151643,
+        "tokenizer.ggml.add_bos_token": false,
+        "tokenizer.chat_template": "{%- if tools %}\n    {{- '<|im_start|>system\\n' }}\n    {%- if messages[0]['role'] == 'system' %}\n        {{- messages[0]['content'] }}\n    {%- else %}\n        {{- 'You are Qwen, created by Alibaba Cloud. You are a helpful assistant.' }}\n    {%- endif %}\n    {{- \"\\n\\n# Tools\\n\\nYou may call one or more functions to assist with the user query.\\n\\nYou are provided with function signatures within <tools></tools> XML tags:\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}\n        {{- tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\\n\\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\\n<tool_call>\\n{{\\\"name\\\": <function-name>, \\\"arguments\\\": <args-json-object>}}\\n</tool_call><|im_end|>\\n\" }}\n{%- else %}\n    {%- if messages[0]['role'] == 'system' %}\n        {{- '<|im_start|>system\\n' + messages[0]['content'] + '<|im_end|>\\n' }}\n    {%- else %}\n        {{- '<|im_start|>system\\nYou are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n{%- for message in messages %}\n    {%- if (message.role == \"user\") or (message.role == \"system\" and not loop.first) or (message.role == \"assistant\" and not message.tool_calls) %}\n        {{- '<|im_start|>' + message.role + '\\n' + message.content + '<|im_end|>' + '\\n' }}\n    {%- elif message.role == \"assistant\" %}\n        {{- '<|im_start|>' + message.role }}\n        {%- if message.content %}\n            {{- '\\n' + message.content }}\n        {%- endif %}\n        {%- for tool_call in message.tool_calls %}\n            {%- if tool_call.function is defined %}\n                {%- set tool_call = tool_call.function %}\n            {%- endif %}\n            {{- '\\n<tool_call>\\n{\"name\": \"' }}\n            {{- tool_call.name }}\n            {{- '\", \"arguments\": ' }}\n            {{- tool_call.arguments | tojson }}\n            {{- '}\\n</tool_call>' }}\n        {%- endfor %}\n        {{- '<|im_end|>\\n' }}\n    {%- elif message.role == \"tool\" %}\n        {%- if (loop.index0 == 0) or (messages[loop.index0 - 1].role != \"tool\") %}\n            {{- '<|im_start|>user' }}\n        {%- endif %}\n        {{- '\\n<tool_response>\\n' }}\n        {{- message.content }}\n        {{- '\\n</tool_response>' }}\n        {%- if loop.last or (messages[loop.index0 + 1].role != \"tool\") %}\n            {{- '<|im_end|>\\n' }}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n{%- endif %}\n",
+        "general.quantization_version": 2
+      }
+    },
+    "fp16_shards": [
+      {
+        "file_name": "qwen2.5-3b-instruct-fp16-00001-of-00002.gguf",
+        "file_size_bytes": 3980517664,
+        "gguf_version": 3,
+        "tensor_count": 216,
+        "parameter_count": 1987169280,
+        "file_type": {
+          "code": 1,
+          "name": "F16"
+        },
+        "quantization": "F16",
+        "architecture": "qwen2",
+        "model_name": "qwen2.5-3b-instruct",
+        "quantization_version": 2,
+        "context_length": 32768,
+        "tensor_types": {
+          "F16": 127,
+          "F32": 89
+        },
+        "sha256": null,
+        "metadata": {
+          "general.architecture": "qwen2",
+          "general.type": "model",
+          "general.name": "qwen2.5-3b-instruct",
+          "general.version": "v0.1-v0.1",
+          "general.finetune": "qwen2.5-3b-instruct",
+          "general.size_label": "3.4B",
+          "qwen2.block_count": 36,
+          "qwen2.context_length": 32768,
+          "qwen2.embedding_length": 2048,
+          "qwen2.feed_forward_length": 11008,
+          "qwen2.attention.head_count": 16,
+          "qwen2.attention.head_count_kv": 2,
+          "qwen2.rope.freq_base": 1000000.0,
+          "qwen2.attention.layer_norm_rms_epsilon": 9.999999974752427e-07,
+          "general.file_type": 1,
+          "tokenizer.ggml.model": "gpt2",
+          "tokenizer.ggml.pre": "qwen2",
+          "tokenizer.ggml.eos_token_id": 151645,
+          "tokenizer.ggml.padding_token_id": 151643,
+          "tokenizer.ggml.bos_token_id": 151643,
+          "tokenizer.ggml.add_bos_token": false,
+          "tokenizer.chat_template": "{%- if tools %}\n    {{- '<|im_start|>system\\n' }}\n    {%- if messages[0]['role'] == 'system' %}\n        {{- messages[0]['content'] }}\n    {%- else %}\n        {{- 'You are Qwen, created by Alibaba Cloud. You are a helpful assistant.' }}\n    {%- endif %}\n    {{- \"\\n\\n# Tools\\n\\nYou may call one or more functions to assist with the user query.\\n\\nYou are provided with function signatures within <tools></tools> XML tags:\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}\n        {{- tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\\n\\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\\n<tool_call>\\n{{\\\"name\\\": <function-name>, \\\"arguments\\\": <args-json-object>}}\\n</tool_call><|im_end|>\\n\" }}\n{%- else %}\n    {%- if messages[0]['role'] == 'system' %}\n        {{- '<|im_start|>system\\n' + messages[0]['content'] + '<|im_end|>\\n' }}\n    {%- else %}\n        {{- '<|im_start|>system\\nYou are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n{%- for message in messages %}\n    {%- if (message.role == \"user\") or (message.role == \"system\" and not loop.first) or (message.role == \"assistant\" and not message.tool_calls) %}\n        {{- '<|im_start|>' + message.role + '\\n' + message.content + '<|im_end|>' + '\\n' }}\n    {%- elif message.role == \"assistant\" %}\n        {{- '<|im_start|>' + message.role }}\n        {%- if message.content %}\n            {{- '\\n' + message.content }}\n        {%- endif %}\n        {%- for tool_call in message.tool_calls %}\n            {%- if tool_call.function is defined %}\n                {%- set tool_call = tool_call.function %}\n            {%- endif %}\n            {{- '\\n<tool_call>\\n{\"name\": \"' }}\n            {{- tool_call.name }}\n            {{- '\", \"arguments\": ' }}\n            {{- tool_call.arguments | tojson }}\n            {{- '}\\n</tool_call>' }}\n        {%- endfor %}\n        {{- '<|im_end|>\\n' }}\n    {%- elif message.role == \"tool\" %}\n        {%- if (loop.index0 == 0) or (messages[loop.index0 - 1].role != \"tool\") %}\n            {{- '<|im_start|>user' }}\n        {%- endif %}\n        {{- '\\n<tool_response>\\n' }}\n        {{- message.content }}\n        {{- '\\n</tool_response>' }}\n        {%- if loop.last or (messages[loop.index0 + 1].role != \"tool\") %}\n            {{- '<|im_end|>\\n' }}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n{%- endif %}\n",
+          "general.quantization_version": 2,
+          "split.no": 0,
+          "split.count": 2,
+          "split.tensors.count": 435
+        }
+      },
+      {
+        "file_name": "qwen2.5-3b-instruct-fp16-00002-of-00002.gguf",
+        "file_size_bytes": 2820129120,
+        "gguf_version": 3,
+        "tensor_count": 219,
+        "parameter_count": 1409934336,
+        "file_type": null,
+        "quantization": "F16",
+        "architecture": null,
+        "model_name": null,
+        "quantization_version": null,
+        "context_length": null,
+        "tensor_types": {
+          "F16": 127,
+          "F32": 92
+        },
+        "sha256": null,
+        "metadata": {
+          "split.no": 1,
+          "split.count": 2,
+          "split.tensors.count": 435
+        }
+      }
+    ]
+  },
+  "configuration": {
+    "engine_id": "llamacpp-optimized",
+    "runtime": "llama.cpp",
+    "quantization": "Q4_K_M",
+    "n_ctx": 2048,
+    "n_threads": 8,
+    "n_gpu_layers": 0,
+    "temperature": null,
+    "decoding": "greedy (deterministic)",
+    "chat_template": false,
+    "max_new_tokens": 64,
+    "warmup": 1,
+    "repeats": 5
+  },
+  "model_footprint": {
+    "fp16": {
+      "label": "Reference FP16 model \u2014 inference infeasible on current 7.63 GiB RAM machine",
+      "files": [
+        {
+          "name": "qwen2.5-3b-instruct-fp16-00001-of-00002.gguf",
+          "size_bytes": 3980517664
+        },
+        {
+          "name": "qwen2.5-3b-instruct-fp16-00002-of-00002.gguf",
+          "size_bytes": 2820129120
+        }
+      ],
+      "shard_count": 2,
+      "total_bytes": 6800646784,
+      "total_mb": 6485.6
+    },
+    "q4_k_m": {
+      "label": "Validated optimized model \u2014 CPU inference successfully completed",
+      "files": [
+        {
+          "name": "qwen2.5-3b-instruct-q4_k_m.gguf",
+          "size_bytes": 2104932768
+        }
+      ],
+      "shard_count": 1,
+      "total_bytes": 2104932768,
+      "total_mb": 2007.42
+    },
+    "reduction": {
+      "bytes": 4695714016,
+      "mb": 4478.18,
+      "percent": 69.05
+    },
+    "note": "Storage/footprint comparison only. It does not imply any inference speedup: the FP16 baseline completed no inference on this machine, so no latency/throughput comparison between FP16 and Q4_K_M is made."
+  },
+  "benchmark": {
+    "engine_id": "llamacpp-optimized",
+    "runtime": "llama.cpp",
+    "model_id": "qwen2.5-3b-instruct-q4_k_m",
+    "prompt": "Explain what an AI inference engine is.",
+    "prompt_tokens": 9,
+    "warmup": 1,
+    "model_footprint_bytes": 2104932768,
+    "aggregates": {
+      "runs": 5,
+      "mean_latency_ms": 11278.62,
+      "median_latency_ms": 10314.56,
+      "p90_latency_ms": 14018.02,
+      "mean_ttft_ms": 156.5,
+      "mean_generated_tokens": 64.0,
+      "mean_tokens_per_second": 5.77,
+      "peak_memory_mb": 2460.32,
+      "mean_cpu_percent": 535.82
+    },
+    "per_run": [
+      {
+        "repeat": 1,
+        "wall_clock_latency_ms": 10159.37,
+        "engine_latency_ms": 10159.01079995092,
+        "ttft_ms": 140.41,
+        "generated_tokens": 64,
+        "tokens_per_second": 6.3,
+        "memory_mb": 2457.56,
+        "cpu_percent": 582.5
+      },
+      {
+        "repeat": 2,
+        "wall_clock_latency_ms": 10315.05,
+        "engine_latency_ms": 10314.55820001429,
+        "ttft_ms": 164.24,
+        "generated_tokens": 64,
+        "tokens_per_second": 6.2,
+        "memory_mb": 2460.32,
+        "cpu_percent": 594.5
+      },
+      {
+        "repeat": 3,
+        "wall_clock_latency_ms": 11785.59,
+        "engine_latency_ms": 11785.261299984995,
+        "ttft_ms": 142.58,
+        "generated_tokens": 64,
+        "tokens_per_second": 5.43,
+        "memory_mb": 2460.32,
+        "cpu_percent": 515.1
+      },
+      {
+        "repeat": 4,
+        "wall_clock_latency_ms": 14018.44,
+        "engine_latency_ms": 14018.015000037849,
+        "ttft_ms": 187.7,
+        "generated_tokens": 64,
+        "tokens_per_second": 4.57,
+        "memory_mb": 2202.8,
+        "cpu_percent": 413.1
+      },
+      {
+        "repeat": 5,
+        "wall_clock_latency_ms": 10116.47,
+        "engine_latency_ms": 10116.265300021041,
+        "ttft_ms": 147.57,
+        "generated_tokens": 64,
+        "tokens_per_second": 6.33,
+        "memory_mb": 1915.44,
+        "cpu_percent": 573.9
+      }
+    ],
+    "generation_kwargs": {
+      "max_new_tokens": 64
+    }
+  },
+  "feasibility": {
+    "fp16": {
+      "status": "not_feasible",
+      "classification": "hardware memory constraint",
+      "engine_id": "transformers-baseline",
+      "runtime": "transformers",
+      "model": "Qwen2.5-3B-Instruct",
+      "dtype": "float16",
+      "inference_completed": false,
+      "reason": "Model loading started but could not complete: the feasibility watchdog detected severe memory pressure (system available RAM dropped to 159-263 MB on a machine with 7.63 GiB total) and aborted the run safely. No FP16 inference was performed.",
+      "watchdog_abort": {
+        "available_ram_at_abort_mb": 159,
+        "reported_available_ram_range_mb": [
+          159,
+          263
+        ],
+        "trigger": "system available RAM below the 300 MB severe-paging alarm",
+        "total_ram_gb": 7.63
+      },
+      "label": "Reference FP16 model \u2014 inference infeasible on current 7.63 GiB RAM machine"
+    },
+    "explanation": "The FP16 baseline completed no inference on this machine (7.63 GiB RAM; the STEP 10A feasibility watchdog aborted during model loading when available RAM dropped to 159-263 MB). Therefore no FP16 latency, TTFT, throughput, or speedup-vs-FP16 value was measured, and no percentage performance improvement over FP16 is claimed."
+  },
+  "limitations": [
+    "FP16 baseline inference is not feasible on this machine (7.63 GiB total RAM): the STEP 10A feasibility watchdog aborted during model loading when available RAM dropped to 159-263 MB. No FP16 latency/throughput/TTFT exists, so no speedup over FP16 is claimed.",
+    "The GGUF general.file_type enum reports 'Q4_K' (code 11); the 'M' (medium) variant suffix is not part of the GGUF enum. The Q4_K_M label is taken from the filename; the per-tensor quantization breakdown is reported from the file itself.",
+    "Benchmark measured on a Windows development laptop (CPU), not on Arm64 cloud hardware. Numbers are reproducible on this machine only and make no claim about Arm64 performance.",
+    "results/optimization_report.json is a gitignored generated artifact; regenerate it with the command in 'reproducibility'."
+  ],
+  "reproducibility": {
+    "command": "backend/.venv/Scripts/python scripts/run_optimization_report.py",
+    "engine_load": "load_engine(\"llamacpp-optimized\")",
+    "benchmark": "BenchmarkRunner.run(engine, BenchmarkConfig(...)) with warmup=1, repeats=5, max_new_tokens=64, temperature=None, chat_template=False",
+    "prompt": "Explain what an AI inference engine is.",
+    "note": "Re-running regenerates the benchmark records; each record is timestamped so runs accumulate as evidence."
+  },
+  "measured": {
+    "q4_k_m_file_size_bytes": 2104932768,
+    "q4_k_m_latency_mean_ms": 11278.62,
+    "q4_k_m_latency_median_ms": 10314.56,
+    "q4_k_m_latency_p90_ms": 14018.02,
+    "q4_k_m_ttft_mean_ms": 156.5,
+    "q4_k_m_generated_tokens_mean": 64.0,
+    "q4_k_m_tokens_per_second_mean": 5.77,
+    "q4_k_m_peak_memory_mb": 2460.32,
+    "q4_k_m_mean_cpu_percent": 535.82,
+    "q4_k_m_prompt_tokens": 9,
+    "benchmark_repetitions": 5,
+    "warmup_runs": 1
+  },
+  "not_measured": {
+    "fp16_inference_latency_ms": null,
+    "fp16_ttft_ms": null,
+    "fp16_tokens_per_second": null,
+    "fp16_throughput": null,
+    "comparative_speedup_vs_fp16_percent": null
+  },
+  "not_measured_explanation": "The FP16 baseline completed no inference on this machine (7.63 GiB RAM; the STEP 10A feasibility watchdog aborted during model loading when available RAM dropped to 159-263 MB). Therefore no FP16 latency, TTFT, throughput, or speedup-vs-FP16 value was measured, and no percentage performance improvement over FP16 is claimed.",
+  "generated_at": "2026-08-11T09:02:56.962271+00:00"
+}
