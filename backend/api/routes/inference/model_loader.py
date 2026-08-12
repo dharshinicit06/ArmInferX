@@ -12,11 +12,19 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
+import psutil
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.utils import logging as hf_logging
 
 from api.utils.exceptions import ModelLoadError
+
+# Minimum total RAM the FP16 baseline needs. The 3B FP16 weights are ~6.5 GB
+# and the framework needs headroom on top; the project documents the baseline
+# as requiring >= 16 GiB (see docs/optimization.md). Attempting the load below
+# this on a 7.63 GiB machine exhausted memory and killed the whole backend
+# process (OOM), so the load is refused up front with a clean, honest error.
+MIN_RAM_GIB_FOR_FP16_BASELINE = 16.0
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +103,12 @@ def load_inference_model(
             "Run `scripts/download_model.py` first."
         )
 
+    # Hardware feasibility guard: the FP16 baseline must not OOM-kill the
+    # backend process. Check BEFORE touching the weights so the API returns a
+    # clean, friendly error instead of the process dying mid-load.
+    if _is_fp16_baseline_load(dtype):
+        _assert_fp16_baseline_feasible()
+
     try:
         torch_dtype = _resolve_dtype(dtype)
 
@@ -126,6 +140,30 @@ def load_inference_model(
         model_id=path.name,
         device=device,
         dtype=torch_dtype,
+    )
+
+
+def _is_fp16_baseline_load(dtype: str) -> bool:
+    """True when this load is the FP16 baseline (the documented heavy case)."""
+    return dtype.strip().lower() == "float16"
+
+
+def _assert_fp16_baseline_feasible() -> None:
+    """Refuse the FP16 baseline load on machines that cannot hold it safely.
+
+    Raises:
+        ModelLoadError: when total physical RAM is below the documented
+            threshold, with a message the API surfaces to the client.
+    """
+    total_gib = psutil.virtual_memory().total / (1024**3)
+    if total_gib >= MIN_RAM_GIB_FOR_FP16_BASELINE:
+        return
+    raise ModelLoadError(
+        "The Transformers FP16 baseline requires at least 16 GiB of RAM to "
+        f"load reliably, but this machine has {total_gib:.1f} GiB. Loading it "
+        "here would exhaust memory and kill the backend process, so the load "
+        "is refused for safety. Use the 'llamacpp-optimized' engine instead, "
+        "or run the baseline on a machine with >= 16 GiB RAM."
     )
 
 

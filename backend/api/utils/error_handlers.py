@@ -21,6 +21,7 @@ from api.utils.exceptions import (
     InferenceServiceError,
     InvalidGenerationParamsError,
     InvalidPromptError,
+    ModelLoadError,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,6 +31,10 @@ _ERROR_STATUS = {
     InvalidPromptError: 400,
     InvalidGenerationParamsError: 422,
     InferenceServiceError: 500,
+    # A model load that was refused up front (e.g. the FP16 baseline on a
+    # machine with < 16 GiB RAM) is a client-safe "capability unavailable"
+    # response, not a server bug.
+    ModelLoadError: 503,
     # Engine selection/loading/generation failures (typed, client-safe).
     UnknownEngineError: 400,
     EngineError: 500,
