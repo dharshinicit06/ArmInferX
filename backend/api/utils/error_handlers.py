@@ -31,10 +31,6 @@ _ERROR_STATUS = {
     InvalidPromptError: 400,
     InvalidGenerationParamsError: 422,
     InferenceServiceError: 500,
-    # A model load that was refused up front (e.g. the FP16 baseline on a
-    # machine with < 16 GiB RAM) is a client-safe "capability unavailable"
-    # response, not a server bug.
-    ModelLoadError: 503,
     # Engine selection/loading/generation failures (typed, client-safe).
     UnknownEngineError: 400,
     EngineError: 500,
@@ -45,7 +41,17 @@ def register_exception_handlers(app: FastAPI) -> None:
     """Register all API exception handlers on ``app`` (idempotent)."""
     for exc_type, status_code in _ERROR_STATUS.items():
         app.add_exception_handler(exc_type, _make_domain_handler(status_code))
+    # ModelLoadError is often an *expected* refusal (e.g. the FP16 baseline on
+    # a < 16 GiB machine), not a server bug — respond 503 without the
+    # error-level traceback that _make_domain_handler logs for status >= 500.
+    app.add_exception_handler(ModelLoadError, _model_load_handler)
     app.add_exception_handler(Exception, _unexpected_handler)
+
+
+async def _model_load_handler(request: Request, exc: ModelLoadError) -> JSONResponse:
+    """Clean 503 for refused/known-failure model loads (no traceback log)."""
+    logger.warning("Model load refused or failed: %s", exc)
+    return JSONResponse(status_code=503, content={"detail": str(exc)})
 
 
 def _make_domain_handler(status_code: int):
