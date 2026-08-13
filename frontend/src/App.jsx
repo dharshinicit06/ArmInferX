@@ -94,14 +94,6 @@ const ENGINE_OPTIONS = [
     supportsStreaming: true,
     context: 'Qwen2.5-3B-Instruct Q4_K_M · CPU-only · 2.01 GB model footprint',
   },
-  {
-    id: 'transformers-baseline',
-    label: 'Transformers — FP16',
-    runtime: 'Transformers',
-    device: 'CPU',
-    supportsStreaming: false,
-    context: 'FP16 baseline — hardware feasibility limited on current machine',
-  },
 ]
 
 async function postGenerate(payload) {
@@ -178,10 +170,6 @@ async function streamGenerate(payload, onDelta) {
 
 function EngineSelector({ value, onChange, disabled }) {
   const selected = ENGINE_OPTIONS.find((opt) => opt.id === value) ?? ENGINE_OPTIONS[0]
-  // The FP16 baseline is refused by the backend on machines below its 16 GiB
-  // requirement (clean 503). Warn right at selection time so the limitation is
-  // visible before the user ever clicks Generate — no crash, honest UX.
-  const showWarning = selected.id === 'transformers-baseline'
   return (
     <div className="engine-select">
       <label className="engine-select-label" htmlFor="engine-select">
@@ -203,28 +191,6 @@ function EngineSelector({ value, onChange, disabled }) {
         </select>
         <span className="engine-select-context mono">{selected.context}</span>
       </div>
-      {showWarning && (
-        <p className="engine-warn" role="note">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
-            <path d="M12 9v4" />
-            <path d="M12 17h.01" />
-          </svg>
-          <span>
-            This engine needs at least 16 GiB of RAM — this machine has 7.6 GiB,
-            so the API refuses it for safety. Use{' '}
-            <strong>llama.cpp — Q4_K_M</strong> instead.
-          </span>
-        </p>
-      )}
     </div>
   )
 }
@@ -514,7 +480,7 @@ export default function App() {
           <div className="studio-head">
             <p className="studio-kicker mono">AI Inference Studio</p>
             <h1 id="studio-title" className="studio-title">
-              Generate with the local baseline model
+              Generate with the local Q4_K_M model
             </h1>
             <p className="studio-sub">
               Prompt the model running on this machine. Responses appear as

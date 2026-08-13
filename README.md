@@ -9,9 +9,11 @@
 [![React 18](https://img.shields.io/badge/React-18-61DAFB.svg)](https://react.dev/)
 [![Docker](https://img.shields.io/badge/Docker-2496ED.svg)](https://www.docker.com/)
 
-A demo-ready inference studio that benchmarks a **quantized (Q4_K_M) llama.cpp**
-LLM runtime against a **Transformers FP16 baseline**, measures real inference
-metrics, and visualizes the evidence in a web dashboard — all on plain CPU.
+A demo-ready inference studio that runs a **quantized (Q4_K_M) llama.cpp** LLM
+runtime, measures real inference metrics, and visualizes the evidence in a web
+dashboard — all on plain CPU. The optimization story is a measured
+**footprint/feasibility** result: the FP16 Transformers baseline could not run
+on this 7.63 GiB machine, while Q4_K_M runs and is 69.05% smaller.
 
 </div>
 
@@ -52,8 +54,8 @@ Without this, deployment decisions about models and quantizations are guesses.
 
 **ArmInferX** is an end-to-end studio that:
 
-1. Loads an inference **engine** through a pluggable registry (`llamacpp-optimized`
-   or `transformers-baseline`), lazily and cached per process.
+1. Loads an inference **engine** through a pluggable registry
+   (`llamacpp-optimized`), lazily and cached per process.
 2. Serves text generation over HTTP — plain and **streamed** (SSE) — while
    automatically measuring **latency, TTFT, tokens/sec, memory, and CPU** on
    every request.
@@ -95,8 +97,7 @@ EngineManager ── resolves engine_id, lazy-loads once, caches, thread-safe
         │
         ▼
 Engine Registry (engines/registry.py)
-        ├── llamacpp-optimized     (llama.cpp / GGUF Q4_K_M, CPU-only, streams)
-        └── transformers-baseline  (Transformers FP16, on hardware where feasible)
+        └── llamacpp-optimized     (llama.cpp / GGUF Q4_K_M, CPU-only, streams)
         │
         ▼
 InferenceEngine interface (load_model / generate / stream_generate / get_model_info)
@@ -124,20 +125,23 @@ Full details: **`docs/architecture.md`**.
 | `GET` | `/optimization/report` | STEP 11 evidence report (paths sanitized) |
 | `GET` | `/docs` | Swagger UI (OpenAPI) |
 
-## The two engines
+## The engine
 
-| | `transformers-baseline` | `llamacpp-optimized` |
-|---|---|---|
-| Runtime | Hugging Face Transformers | **llama.cpp** (llama-cpp-python) |
-| Model | Qwen2.5-3B-Instruct (FP16 safetensors) | Qwen2.5-3B-Instruct **Q4_K_M** (GGUF) |
-| Device | CPU | CPU-only (`n_gpu_layers=0`) |
-| Streaming | ❌ not supported | ✅ SSE streaming |
-| Status on this laptop | **infeasible** (7.63 GiB RAM) | ✅ validated, benchmarked |
+| | `llamacpp-optimized` |
+|---|---|
+| Runtime | **llama.cpp** (llama-cpp-python) |
+| Model | Qwen2.5-3B-Instruct **Q4_K_M** (GGUF, single file) |
+| Device | CPU-only (`n_gpu_layers=0`) |
+| Streaming | ✅ SSE streaming |
+| Status on this laptop | ✅ validated, benchmarked |
 
-Both implement the shared `InferenceEngine` interface, so the benchmark layer
-treats them identically. **The FP16 baseline is never auto-loaded** — the
-application starts with nothing loaded and only ever loads what a request asks
-for (`ARMINFERX_DEFAULT_ENGINE=llamacpp-optimized` by default).
+The engine implements the shared `InferenceEngine` interface. The FP16
+Transformers baseline was evaluated during STEP 10A and found infeasible on
+this 7.63 GiB machine, so it is **not part of the engine registry**; its
+storage footprint is still compared against Q4_K_M in the optimization report
+(a footprint comparison, not a speed claim). The application starts with
+nothing loaded and only loads what a request asks for
+(`ARMINFERX_DEFAULT_ENGINE=llamacpp-optimized` by default).
 
 ## The optimization story (measured)
 
@@ -227,7 +231,7 @@ physical CPUs.
 | Feature | State |
 |---|---|
 | Chat Studio (generate + auto-measured benchmark panel) | ✅ |
-| Engine selector (llama.cpp / Transformers) | ✅ |
+| Engine selection + streaming (llama.cpp Q4_K_M) | ✅ |
 | Streaming inference (SSE token-by-token) | ✅ |
 | Optimization Dashboard (measured evidence, footprint, feasibility) | ✅ |
 | Benchmark runner + per-engine persistence | ✅ |
@@ -253,7 +257,7 @@ npm run dev        # → http://localhost:3000
 ```
 
 Then in the browser:
-1. **Studio** tab → keep the **llama.cpp — Q4_K_M** engine selected.
+1. **Studio** tab → the **llama.cpp — Q4_K_M** engine is selected by default.
 2. Type a prompt (e.g. "Explain what an AI inference engine is.") → watch the
    **streaming** response and the metadata chips (engine, runtime, latency,
    tokens, tokens/sec, TTFT) and the live **Benchmark · latest run** panel.
@@ -279,7 +283,7 @@ cd backend
 python -m venv .venv
 .venv\Scripts\activate            # Windows  (Linux/macOS: source .venv/bin/activate)
 pip install -r requirements.txt   # API deps
-pip install -r requirements-ml.txt  # ML runtime deps (torch CPU, transformers)
+pip install -r requirements-ml.txt  # optional: torch/transformers (model verify/feasibility scripts)
 pip install llama-cpp-python==0.3.34  # llama.cpp runtime (validated version)
 
 # Model — the Q4_K_M GGUF must sit at models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf
@@ -310,7 +314,7 @@ ArmInferX/
 │   ├── main.py                      # FastAPI composition root, EngineManager wiring
 │   ├── api/routes/                  # inference (generate + stream), benchmarks, optimization
 │   ├── engines/                     # InferenceEngine interface, registry, manager,
-│   │                                #   llamacpp_optimized, transformers_baseline
+│   │                                #   llamacpp_optimized
 │   ├── benchmark/                   # BenchmarkConfig, BenchmarkRunner, metrics, storage
 │   └── optimization/                # report builder, GGUF metadata, footprint
 ├── benchmark/README.md              # benchmark tooling notes

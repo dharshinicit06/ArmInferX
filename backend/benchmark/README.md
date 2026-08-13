@@ -7,14 +7,13 @@ here claims one runtime is faster than another.
 
 ## Goal
 
-Run the **exact same benchmark procedure** against both:
+Run the **exact same benchmark procedure** against the engine:
 
 | engine_id | runtime | model |
 |---|---|---|
-| `transformers-baseline` | `transformers` | Qwen2.5-3B-Instruct (HF safetensors) |
-| `llamacpp-optimized` | `llama.cpp` | Qwen2.5-3B-Instruct (GGUF FP16, split) |
+| `llamacpp-optimized` | `llama.cpp` | Qwen2.5-3B-Instruct Q4_K_M (GGUF, single file) |
 
-Both engines implement the shared `InferenceEngine` interface
+The engine implements the shared `InferenceEngine` interface
 (`load_model` / `generate` / `get_model_info`).
 
 ## Procedure
@@ -44,20 +43,16 @@ A single run is defined by `BenchmarkConfig` (`backend/benchmark/config.py`):
 6. Computes aggregates: mean/median/p90 latency, mean TTFT, mean generated
    tokens, mean tokens/sec, peak memory, mean CPU.
 
-## Raw-completion comparability policy
+## Raw-completion policy
 
-The Transformers pipeline wraps prompts in Qwen's chat template by default;
-the llama.cpp engine performs **raw completion** and does not apply a chat
-template (chat-template support may be added to llama.cpp later).
+The llama.cpp engine performs **raw completion** and does not apply a chat
+template. The benchmark policy is therefore:
 
-For the first apples-to-apples benchmark the policy is:
+> **`chat_template = False`** — llama.cpp always generates from the raw
+> prompt; no chat-template kwargs are ever sent to it.
 
-> **`chat_template = False`** — the Transformers baseline is invoked with
-> `use_chat_template=False` so both engines generate from the identical raw
-> prompt.
-
-The runner passes `use_chat_template` **only** to the chat-template-capable
-engine (the Transformers baseline) and **never** to llama.cpp.
+The runner passes `use_chat_template` **only** to engines that opt in via
+`CHAT_TEMPLATE_ENGINE_IDS` (currently none) and **never** to llama.cpp.
 
 ## Generation kwargs policy
 
@@ -74,8 +69,8 @@ engine-specific kwargs from leaking into either runtime.
 
 Every benchmark result identifies the engine that produced it:
 
-- `engine_id`: `transformers-baseline` | `llamacpp-optimized`
-- `runtime`: `transformers` | `llama.cpp`
+- `engine_id`: `llamacpp-optimized`
+- `runtime`: `llama.cpp`
 - `model_id`: derived from the loaded model
 - `model_path`: engine-specific path when available (e.g. the GGUF path)
 
@@ -98,11 +93,10 @@ in every persisted record.
 from engines import load_engine, available_engines
 
 engine = load_engine("llamacpp-optimized")          # LlamaCppOptimizedEngine
-engine = load_engine("transformers-baseline")       # TransformersBaselineEngine
 ```
 
-`load_engine` is for benchmark orchestration; the HTTP application keeps using
-the Transformers baseline and is unaffected.
+`load_engine` is for benchmark orchestration; the HTTP application resolves
+engines through `EngineManager`.
 
 ## Running a benchmark
 
@@ -111,7 +105,7 @@ from engines import load_engine
 from benchmark import BenchmarkConfig, BenchmarkRunner
 
 runner = BenchmarkRunner()
-engine = load_engine("transformers-baseline", model_dir="/path/to/model")
+engine = load_engine("llamacpp-optimized")
 run = runner.run(engine, BenchmarkConfig(prompt="Explain AI inference."))
 print(run.to_dict())
 ```
@@ -121,13 +115,12 @@ print(run.to_dict())
 - **Persisted/aggregated `latency_ms` is the engine-reported inference
   latency** (`result.latency_ms` from `generate()`), the same value the HTTP
   `/generate` record stores — so runner records and API records are directly
-  comparable. Each engine measures it at its own boundary (Transformers:
-  around `model.generate()` only; llama.cpp: around the streaming completion).
+  comparable. The llama.cpp engine measures it around the streaming
+  completion.
 - The wall-clock `Stopwatch` latency of the whole `generate()` call is
   measured by `BenchmarkService.measure()` and available in-memory as
   `BenchmarkMetrics.latency_ms` (surfaced as `inference_latency_ms` in
   `metrics.extra`); the runner persists the engine-reported value above.
-- TTFT is measured by each engine at its own boundary (Transformers: internal
-  TTFT streamer; llama.cpp: time to first streamed token).
+- TTFT is measured by the engine: llama.cpp times the first streamed token.
 - Token counts are tokenizer-native (emitted token IDs / streamed tokens) —
   never character or word estimates.

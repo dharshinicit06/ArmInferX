@@ -43,7 +43,7 @@ no GPU. No optimization is applied at this stage.
 `LlamaCppOptimizedEngine` is **implemented** and registered in the engine
 registry as `llamacpp-optimized` (`runtime = llama.cpp`). It runs GGUF models
 through llama.cpp (via `llama-cpp-python`) on CPU only (`n_gpu_layers=0`),
-exposing the same `InferenceEngine` interface as the transformers baseline.
+exposing the `InferenceEngine` interface.
 
 - **Default optimized model:** Qwen2.5-3B-Instruct **Q4_K_M**
   (`models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf`, single-file GGUF;
@@ -58,9 +58,11 @@ exposing the same `InferenceEngine` interface as the transformers baseline.
   `results/benchmarks/llamacpp-optimized/` (see `docs/optimization.md` for the
   full measured/unmeasured breakdown).
 
-The FP16 transformers baseline could not complete inference on this 7.63 GiB
-RAM machine (hardware memory constraint), so **no FP16-vs-Q4_K_M performance
-comparison is claimed** — measured results are reported in `docs/optimization.md`.
+The FP16 Transformers baseline was evaluated during STEP 10A and could not
+complete inference on this 7.63 GiB RAM machine (hardware memory constraint),
+so it is **not part of the engine registry** and **no FP16-vs-Q4_K_M
+performance comparison is claimed** — measured results are reported in
+`docs/optimization.md`.
 
 ## Running
 
@@ -127,9 +129,7 @@ backend/
 │   ├── routes/
 │   │   ├── inference/
 │   │   │   ├── schemas.py           # Pydantic request/response models (OpenAPI contract)
-│   │   │   ├── router.py            # APIRouter: POST /generate (DI + Swagger docs)
-│   │   │   ├── model_loader.py      # Loading only: tokenizer + model from disk → InferenceModel
-│   │   │   └── inference_service.py # Generation only: validated text generation on a loaded model
+│   │   │   └── router.py            # APIRouter: POST /generate (DI + Swagger docs)
 │   │   └── benchmarks/
 │   │       ├── schemas.py           # BenchmarkRecord / BenchmarkSummary response models
 │   │       └── router.py            # APIRouter: GET /benchmarks, /latest, /summary
@@ -143,7 +143,6 @@ backend/
 │   ├── result.py                    # GenerationResult (shared engine result contract)
 │   ├── manager.py                   # EngineManager: lazy load + cache by engine_id (default engine)
 │   ├── registry.py                  # engine_id -> engine class; load_engine() uniform entry point
-│   ├── transformers_baseline.py     # TransformersBaselineEngine (wraps the baseline service)
 │   ├── llamacpp_optimized.py        # LlamaCppOptimizedEngine (llama.cpp / GGUF, CPU-only, Q4_K_M default)
 │   └── __init__.py                  # Engine public re-exports
 ├── benchmark/
@@ -159,17 +158,15 @@ backend/
 **No model is loaded at startup.** An `EngineManager` (in `app.state.engine_manager`)
 loads the requested engine lazily on first use and reuses it for every
 subsequent request — the 2 GB Q4_K_M model is loaded once per process, never
-per request, and the FP16 Transformers baseline is **never loaded
-automatically** (it is infeasible on this machine's 7.63 GiB RAM). The default
-engine is `llamacpp-optimized`, overridable via `ARMINFERX_DEFAULT_ENGINE`
-(e.g. `transformers-baseline` on hardware where that is feasible).
+per request. The default engine is `llamacpp-optimized`, overridable via
+`ARMINFERX_DEFAULT_ENGINE`.
 
-`POST /generate` accepts an optional `engine_id` (`llamacpp-optimized` or
-`transformers-baseline`) resolved through the engine registry; unknown ids get
-a clean 400. Responses include engine identity, generated token count,
-tokens/second and TTFT when the engine provides them. `POST /generate/stream`
-streams the same generation as Server-Sent Events for streaming-capable
-engines. Run from this directory: `uvicorn main:app --reload --port 8000`.
+`POST /generate` accepts an optional `engine_id` (`llamacpp-optimized`)
+resolved through the engine registry; unknown ids get a clean 400. Responses
+include engine identity, generated token count, tokens/second and TTFT when
+the engine provides them. `POST /generate/stream` streams the same generation
+as Server-Sent Events for streaming-capable engines. Run from this directory:
+`uvicorn main:app --reload --port 8000`.
 
 `POST /generate` measures **engine inference latency**: wall-clock milliseconds
 around the engine's `generate()` call (see `api/utils/timing.py`).
@@ -180,12 +177,10 @@ generated tokens, and tokens-per-second throughput, returning a
 `BenchmarkMetrics` object — the foundation for the full benchmark engine.
 New metrics (throughput by phase) plug in later via `BenchmarkMetrics.extra`.
 
-TTFT is measured inside the inference service with an instrumentation
-streamer attached to `model.generate()`: it records the wall-clock time until
-the first output token is produced (prefill + first decode step) and is kept
-as a separate metric (`ttft_ms`) from total latency (`latency_ms`). The
-streamer only observes tokens, so the generated text and the `/generate`
-contract are unchanged.
+TTFT is measured by the engine itself: the llama.cpp engine times the first
+streamed output token and keeps it as a separate metric (`ttft_ms`) from the
+total latency (`latency_ms`). Token counts are tokenizer-native (`Llama.tokenize`
+for the prompt, emitted stream chunks for the completion).
 
 Every successful `POST /generate` automatically measures the request and
 saves a JSON record to `results/baseline/` (gitignored) containing prompt,
@@ -208,9 +203,7 @@ zeros when empty). They are documented in Swagger UI at `/docs`.
 | `main.py` | Application entry point, router setup, middleware config |
 | `api/routes/inference/schemas.py` | Pydantic request/response models with OpenAPI examples |
 | `api/routes/inference/router.py` | `APIRouter` for `POST /generate` (dependency injection, docs) |
-| `api/routes/inference/model_loader.py` | Load tokenizer + model from disk into an `InferenceModel` |
-| `api/routes/inference/inference_service.py` | Validate and run text generation on the loaded model |
-| `engines/` | `InferenceEngine` interface, `TransformersBaselineEngine`, `LlamaCppOptimizedEngine` (llama.cpp / GGUF) |
+| `engines/` | `InferenceEngine` interface, `LlamaCppOptimizedEngine` (llama.cpp / GGUF) |
 | `api/utils/` | Shared exceptions, logging, HTTP error handlers, latency Stopwatch |
 | `api/routes/benchmarks/schemas.py` | `BenchmarkRecord` / `BenchmarkSummary` Pydantic response models |
 | `api/routes/benchmarks/router.py` | `GET /benchmarks`, `/latest`, `/summary` (read-only results API) |

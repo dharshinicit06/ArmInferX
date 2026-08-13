@@ -1,22 +1,18 @@
 """Inference engine abstraction for ArmInferX.
 
-Every runtime (Transformers baseline today, llama.cpp optimized) implements
-the :class:`~engines.base.InferenceEngine` interface:
+Every runtime implements the :class:`~engines.base.InferenceEngine` interface.
+Today that is a single runtime:
 
-- ``TransformersBaselineEngine`` — the existing Hugging Face baseline,
-  wrapped to conform to the interface (the baseline pipeline itself is
-  unchanged).
 - ``LlamaCppOptimizedEngine`` — the llama.cpp/GGUF runtime (CPU-only),
-  sharing the same interface so baseline vs. optimized runs can be compared
-  on identical contracts.
+  exposed through the interface so optimized runs can be benchmarked on
+  identical contracts.
 
 Shared types: ``GenerationResult`` (result contract), ``EngineInfo`` and
 ``StreamChunk`` (metadata/streaming contracts).
 
 Orchestration: :func:`~engines.registry.load_engine` resolves an ``engine_id``
-(``transformers-baseline`` | ``llamacpp-optimized``) to a loaded engine for
-benchmark use; the HTTP application is unaffected and keeps using the
-Transformers baseline.
+(``llamacpp-optimized``) to a loaded engine for benchmark use; the HTTP
+application resolves engines through ``EngineManager``.
 """
 
 from engines.base import (
@@ -35,7 +31,6 @@ from engines.registry import (
     load_engine,
 )
 from engines.result import GenerationResult
-from engines.transformers_baseline import TransformersBaselineEngine
 
 __all__ = [
     "EngineError",
@@ -46,7 +41,6 @@ __all__ = [
     "InferenceEngine",
     "LlamaCppOptimizedEngine",
     "StreamChunk",
-    "TransformersBaselineEngine",
     "UnknownEngineError",
     "available_engines",
     "get_engine_class",

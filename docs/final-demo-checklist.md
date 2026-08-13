@@ -27,10 +27,10 @@ FP16 model. The two servers must already be running (see
   at startup. Every generation is auto-measured and persisted."*
 
 ## D · Engine selector (15 s)
-- Show the selector: **llama.cpp — Q4_K_M** (selected) and **Transformers —
-  FP16** (labeled *hardware feasibility limited*).
-- *"Two runtimes, one interface. We use the one that actually runs on this
-  machine — and the UI says so."*
+- Show the selector: **llama.cpp — Q4_K_M** (the registered engine).
+- *"The FP16 Transformers baseline was evaluated during the feasibility check
+  and proved infeasible on this machine's RAM, so the registry ships the
+  engine that actually runs here — llama.cpp Q4_K_M."*
 
 ## E · Live llama.cpp inference (25 s)
 - Type: `Explain what an AI inference engine is.` → **Generate**.

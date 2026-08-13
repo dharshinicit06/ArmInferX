@@ -2,14 +2,11 @@
 
 Maps a stable ``engine_id`` to the concrete :class:`~engines.base.InferenceEngine`
 class and exposes a uniform ``load_engine(engine_id, ...)`` helper so the
-benchmark layer can load either runtime through the same entry point:
+benchmark layer can load a runtime through the same entry point:
 
-    transformers-baseline  -> TransformersBaselineEngine
     llamacpp-optimized     -> LlamaCppOptimizedEngine
 
-The registry is for benchmark orchestration only. The HTTP application keeps
-using the Transformers baseline (``main.py`` is untouched) — nothing here
-switches the running app away from the baseline.
+Add new runtimes here (engine_id -> engine class) to make them benchmarkable.
 """
 
 from __future__ import annotations
@@ -18,7 +15,6 @@ from typing import Any
 
 from engines.base import EngineError, InferenceEngine
 from engines.llamacpp_optimized import LlamaCppOptimizedEngine
-from engines.transformers_baseline import TransformersBaselineEngine
 
 
 class UnknownEngineError(EngineError):
@@ -27,7 +23,6 @@ class UnknownEngineError(EngineError):
 
 #: engine_id -> engine class. Add new runtimes here to make them benchmarkable.
 ENGINE_REGISTRY: dict[str, type[InferenceEngine]] = {
-    "transformers-baseline": TransformersBaselineEngine,
     "llamacpp-optimized": LlamaCppOptimizedEngine,
 }
 

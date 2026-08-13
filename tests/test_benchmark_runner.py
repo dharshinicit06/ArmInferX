@@ -3,13 +3,14 @@
 Covers ``BenchmarkConfig`` validation/defaults, ``BenchmarkRunner`` (warmup,
 exact repeat count, identical kwargs, chat-template policy, engine identity,
 aggregates), the engine registry, and backward compatibility of the result
-stores. Uses fake engines only — no real Transformers or llama.cpp model is
-loaded, and no performance claims are made from fake numbers.
+stores. Uses fake engines only — no real llama.cpp model is loaded, and no
+performance claims are made from fake numbers.
 """
 
 import json
 import sys
 import tempfile
+from contextlib import contextmanager
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
@@ -64,9 +65,11 @@ class _FakeEngineBase:
         )
 
 
-class FakeTransformersEngine(_FakeEngineBase):
-    engine_id = "transformers-baseline"
-    runtime = "transformers"
+class FakeChatTemplateEngine(_FakeEngineBase):
+    """Fake engine that opts into chat templates (registered for the test)."""
+
+    engine_id = "chat-template-engine"
+    runtime = "chat-template"
 
 
 class FakeLlamaEngine(_FakeEngineBase):
@@ -146,7 +149,7 @@ def _runner_with_tmp_store(engine, tmp: str) -> BenchmarkRunner:
 
 def test_warmup_and_repeat_counts():
     cfg = BenchmarkConfig(prompt="hi", repeats=4, warmup=2)
-    engine = FakeTransformersEngine()
+    engine = FakeChatTemplateEngine()
     with tempfile.TemporaryDirectory() as tmp:
         runner = _runner_with_tmp_store(engine, tmp)
         run = runner.run(engine, cfg)
@@ -164,7 +167,7 @@ def test_warmup_and_repeat_counts():
 
 def test_warmup_uses_same_prompt_and_kwargs():
     cfg = BenchmarkConfig(prompt="warm me", repeats=2, warmup=1)
-    engine = FakeTransformersEngine()
+    engine = FakeChatTemplateEngine()
     with tempfile.TemporaryDirectory() as tmp:
         _runner_with_tmp_store(engine, tmp).run(engine, cfg)
 
@@ -183,7 +186,7 @@ def test_identical_config_applied_to_both_engines():
     cfg = BenchmarkConfig(
         prompt="same prompt for both", max_new_tokens=96, temperature=0.7, repeats=2
     )
-    tf = FakeTransformersEngine()
+    tf = FakeChatTemplateEngine()
     llm = FakeLlamaEngine()
     with tempfile.TemporaryDirectory() as tmp:
         _runner_with_tmp_store(tf, tmp).run(tf, cfg)
@@ -212,15 +215,30 @@ def test_temperature_none_is_not_passed():
 # 7 + 8. Chat-template policy + no unsupported kwargs for llama.cpp
 # ---------------------------------------------------------------------------
 
+@contextmanager
+def _patch_chat_template_ids(*ids: str):
+    """Temporarily make ``engine_id``s opt into chat templates."""
+    import benchmark.runner as runner_module
+
+    original = runner_module.CHAT_TEMPLATE_ENGINE_IDS
+    runner_module.CHAT_TEMPLATE_ENGINE_IDS = tuple(ids)
+    try:
+        yield
+    finally:
+        runner_module.CHAT_TEMPLATE_ENGINE_IDS = original
+
+
 def test_chat_template_policy():
     cfg = BenchmarkConfig(prompt="hi", repeats=1, warmup=0)  # chat_template=False
-    tf = FakeTransformersEngine()
+    tf = FakeChatTemplateEngine()
     llm = FakeLlamaEngine()
     with tempfile.TemporaryDirectory() as tmp:
-        _runner_with_tmp_store(tf, tmp).run(tf, cfg)
-        _runner_with_tmp_store(llm, tmp).run(llm, cfg)
+        with _patch_chat_template_ids("chat-template-engine"):
+            _runner_with_tmp_store(tf, tmp).run(tf, cfg)
+            _runner_with_tmp_store(llm, tmp).run(llm, cfg)
 
-    # Transformers: use_chat_template explicitly controlled (False by default).
+    # Chat-template opt-in engine: use_chat_template explicitly controlled
+    # (False by default).
     assert tf.calls[0][1]["use_chat_template"] is False
     # llama.cpp: must never receive use_chat_template or do_sample.
     for prompt, kwargs in llm.calls:
@@ -228,20 +246,21 @@ def test_chat_template_policy():
         assert "do_sample" not in kwargs
     assert set(tf.calls[0][1]) == {"max_new_tokens", "use_chat_template"}
     assert set(llm.calls[0][1]) == {"max_new_tokens"}
-    print("PASS: chat-template policy (baseline controlled; llama.cpp gets no template/do_sample)")
+    print("PASS: chat-template policy (opt-in engine controlled; llama.cpp gets no template/do_sample)")
 
 
-def test_chat_template_true_is_forwarded_to_baseline_only():
+def test_chat_template_true_is_forwarded_to_optin_only():
     cfg = BenchmarkConfig(prompt="hi", repeats=1, warmup=0, chat_template=True)
-    tf = FakeTransformersEngine()
+    tf = FakeChatTemplateEngine()
     llm = FakeLlamaEngine()
     with tempfile.TemporaryDirectory() as tmp:
-        _runner_with_tmp_store(tf, tmp).run(tf, cfg)
-        _runner_with_tmp_store(llm, tmp).run(llm, cfg)
+        with _patch_chat_template_ids("chat-template-engine"):
+            _runner_with_tmp_store(tf, tmp).run(tf, cfg)
+            _runner_with_tmp_store(llm, tmp).run(llm, cfg)
 
     assert tf.calls[0][1]["use_chat_template"] is True
     assert "use_chat_template" not in llm.calls[0][1]
-    print("PASS: chat_template=True forwarded to baseline only")
+    print("PASS: chat_template=True forwarded to opt-in engine only")
 
 
 # ---------------------------------------------------------------------------
@@ -283,7 +302,7 @@ def test_aggregate_mean_median_p90():
     # 5 deterministic latencies -> mean 30, median 30, p90 50.
     latencies = [10.0, 50.0, 30.0, 20.0, 40.0]
 
-    class SequencingEngine(FakeTransformersEngine):
+    class SequencingEngine(FakeChatTemplateEngine):
         def __init__(self):
             super().__init__()
             self._i = 0
@@ -360,16 +379,16 @@ def test_engine_store_writes_distinct_dir_and_records():
 
 def test_runner_persists_to_engine_store():
     with tempfile.TemporaryDirectory() as tmp:
-        store = EngineResultStore("transformers-baseline", tmp)
+        store = EngineResultStore("chat-template-engine", tmp)
         runner = BenchmarkRunner(store=store)
         cfg = BenchmarkConfig(prompt="hi", repeats=3, warmup=0)
-        run = runner.run(FakeTransformersEngine(), cfg)
+        run = runner.run(FakeChatTemplateEngine(), cfg)
 
         files = sorted(Path(tmp).glob("benchmark-*.json"))
         assert len(files) == 3, files
         record = json.loads(files[0].read_text(encoding="utf-8"))
-        assert record["engine_id"] == "transformers-baseline"
-        assert record["runtime"] == "transformers"
+        assert record["engine_id"] == "chat-template-engine"
+        assert record["runtime"] == "chat-template"
         assert run.aggregates is not None and run.aggregates.runs == 3
         print("PASS: runner persists 1 record per repeat, engine-tagged")
 
@@ -378,11 +397,10 @@ def test_runner_persists_to_engine_store():
 # 14 + 15. Engine registry
 # ---------------------------------------------------------------------------
 
-def test_registry_resolves_both_engines():
-    assert available_engines() == ["llamacpp-optimized", "transformers-baseline"]
-    assert get_engine_class("transformers-baseline").engine_id == "transformers-baseline"
+def test_registry_resolves_llamacpp_engine():
+    assert available_engines() == ["llamacpp-optimized"]
     assert get_engine_class("llamacpp-optimized").engine_id == "llamacpp-optimized"
-    print("PASS: registry resolves both engine ids:", available_engines())
+    print("PASS: registry resolves the llamacpp engine id:", available_engines())
 
 
 def test_registry_unknown_engine_raises():
@@ -390,7 +408,7 @@ def test_registry_unknown_engine_raises():
         load_engine("does-not-exist")
     except UnknownEngineError as exc:
         assert "does-not-exist" in str(exc)
-        assert "llamacpp-optimized" in str(exc) and "transformers-baseline" in str(exc)
+        assert "llamacpp-optimized" in str(exc)
         print("PASS: unknown engine id raises UnknownEngineError")
         return
     raise AssertionError("expected UnknownEngineError")
@@ -404,12 +422,12 @@ if __name__ == "__main__":
     test_identical_config_applied_to_both_engines()
     test_temperature_none_is_not_passed()
     test_chat_template_policy()
-    test_chat_template_true_is_forwarded_to_baseline_only()
+    test_chat_template_true_is_forwarded_to_optin_only()
     test_engine_identity_in_results()
     test_aggregate_mean_median_p90()
     test_legacy_baseline_records_still_readable()
     test_engine_store_writes_distinct_dir_and_records()
     test_runner_persists_to_engine_store()
-    test_registry_resolves_both_engines()
+    test_registry_resolves_llamacpp_engine()
     test_registry_unknown_engine_raises()
     print(json.dumps({"result": "all benchmark runner tests passed"}))

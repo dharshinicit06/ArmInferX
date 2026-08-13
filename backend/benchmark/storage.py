@@ -131,8 +131,8 @@ class EngineResultStore(JsonResultStore):
     Pass ``root_dir`` to redirect (used by tests).
 
     Args:
-        engine_id: Stable engine identifier (e.g. ``transformers-baseline`` or
-            ``llamacpp-optimized``). Used as the results subdirectory.
+        engine_id: Stable engine identifier (e.g. ``llamacpp-optimized``).
+            Used as the results subdirectory.
         root_dir: Optional explicit destination directory; defaults to
             ``results/benchmarks/<engine_id>/``.
     """

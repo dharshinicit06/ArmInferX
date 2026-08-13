@@ -205,9 +205,9 @@ def test_registry_rejects_unknown_engine():
 # ---------------------------------------------------------------------------
 
 def test_manager_default_and_explicit_selection():
-    manager = _manager(default="transformers-baseline")
-    assert manager.resolve(None) == "transformers-baseline"
-    assert manager.resolve("") == "transformers-baseline"
+    manager = _manager(default="llamacpp-optimized")
+    assert manager.resolve(None) == "llamacpp-optimized"
+    assert manager.resolve("") == "llamacpp-optimized"
     assert manager.resolve("llamacpp-optimized") == "llamacpp-optimized"
     try:
         manager.resolve("nope")

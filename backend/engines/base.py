@@ -1,9 +1,8 @@
 """Inference engine interface for ArmInferX.
 
-Every inference runtime (Hugging Face Transformers baseline today, llama.cpp
-optimized later) is exposed through the same ``InferenceEngine`` contract so
-the HTTP layer, the benchmark service and the future engine registry can treat
-all engines uniformly:
+Every inference runtime (llama.cpp optimized today) is exposed through the
+same ``InferenceEngine`` contract so the HTTP layer and the benchmark service
+can treat all engines uniformly:
 
 - ``load_model()``       — load the engine's model and return a ready engine.
 - ``generate()``         — produce a complete ``GenerationResult`` for a prompt.

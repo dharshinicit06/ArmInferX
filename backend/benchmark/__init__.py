@@ -9,8 +9,8 @@
 - ``benchmark.benchmark_service``: ``BenchmarkService`` orchestration that
   measures a call and returns a ``BenchmarkMetrics`` object.
 - ``benchmark.runner``: ``BenchmarkRunner`` — runs the same ``BenchmarkConfig``
-  against any ``InferenceEngine`` (Transformers baseline or llama.cpp) with
-  warmup, repeated measurement, engine identity, and aggregate statistics.
+  against any ``InferenceEngine`` (llama.cpp today) with warmup, repeated
+  measurement, engine identity, and aggregate statistics.
 - ``benchmark.storage``: ``BaselineResultStore`` (unchanged) + engine-aware
   ``EngineResultStore`` (``results/benchmarks/<engine_id>/``) persisting
   records as unique JSON files.

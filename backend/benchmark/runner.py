@@ -1,9 +1,9 @@
 """Reusable benchmark runner for ArmInferX.
 
 ``BenchmarkRunner`` executes the **same** :class:`~benchmark.config.BenchmarkConfig`
-against any :class:`~engines.base.InferenceEngine` (Transformers baseline or
-llama.cpp optimized) so the benchmark procedure is identical for both engines
-and future Arm64 measurements are scientifically comparable.
+against any :class:`~engines.base.InferenceEngine` (llama.cpp optimized today)
+so the benchmark procedure stays identical across engines and future Arm64
+measurements are scientifically comparable.
 
 Procedure per engine:
 1. Engine identity is read once via ``engine.get_model_info()``.
@@ -19,9 +19,9 @@ Procedure per engine:
 
 Generation kwargs policy
 ------------------------
-Only arguments supported by BOTH engines are passed: ``max_new_tokens`` and
-(only when set) ``temperature``. ``do_sample`` is never passed. The
-chat-template policy is applied explicitly for the Transformers baseline via
+Only ``max_new_tokens`` and (only when set) ``temperature`` are passed.
+``do_sample`` is never passed. Engines that opt into chat templates via
+``CHAT_TEMPLATE_ENGINE_IDS`` additionally receive
 ``use_chat_template=config.chat_template`` (default ``False`` = raw
 completion); llama.cpp never receives ``use_chat_template`` or ``do_sample``.
 
@@ -46,9 +46,10 @@ from engines import InferenceEngine
 logger = logging.getLogger(__name__)
 
 #: Engine ids whose ``generate()`` accepts the ``use_chat_template`` kwarg.
-#: Only the Transformers baseline supports chat templates today; llama.cpp
-#: performs raw completion and must never receive template kwargs.
-CHAT_TEMPLATE_ENGINE_IDS = ("transformers-baseline",)
+#: No registered engine opts in today (llama.cpp performs raw completion and
+#: must never receive template kwargs); kept as an opt-in mechanism for
+#: future chat-template-capable runtimes.
+CHAT_TEMPLATE_ENGINE_IDS = ()
 
 
 def _p90(values: list[float]) -> float:
@@ -198,10 +199,10 @@ class BenchmarkRunner:
     def generation_kwargs(self, engine_id: str, config: BenchmarkConfig) -> dict:
         """Build the generation kwargs for one engine from a shared config.
 
-        Only kwargs supported by BOTH engines are produced (``max_new_tokens``
+        Only kwargs supported by all engines are produced (``max_new_tokens``
         and, when set, ``temperature``). ``do_sample`` is never included.
-        ``use_chat_template`` is included ONLY for chat-template-capable
-        engines (the Transformers baseline), controlled explicitly by
+        ``use_chat_template`` is included ONLY for engines that opt in via
+        ``CHAT_TEMPLATE_ENGINE_IDS``, controlled explicitly by
         ``config.chat_template``.
         """
         kwargs: dict[str, Any] = {"max_new_tokens": config.max_new_tokens}

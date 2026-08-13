@@ -6,11 +6,11 @@ body with Pydantic, resolves the requested engine through the application's
 and returns a typed response model.
 
 Engine selection: ``POST /generate`` accepts an optional ``engine_id``
-(``transformers-baseline`` or ``llamacpp-optimized``) resolved through the
-existing engine registry. When omitted, the application's configured default
-engine is used. Backward compatibility: when no engine manager exists on
-``app.state`` (e.g. tests that inject a bare service), the legacy single
-``app.state.inference`` engine is used unchanged.
+(``llamacpp-optimized``) resolved through the existing engine registry. When
+omitted, the application's configured default engine is used. Backward
+compatibility: when no engine manager exists on ``app.state`` (e.g. tests that
+inject a bare service), the legacy single ``app.state.inference`` engine is
+used unchanged.
 
 Streaming: ``POST /generate/stream`` emits Server-Sent Events (``text/event-stream``)
 from the engine's ``stream_generate()`` for engines that support streaming
@@ -119,10 +119,10 @@ def _persist_baseline_result(prompt: str, result, metrics, engine: InferenceEngi
         "Runs the selected engine on the given prompt and returns the generated "
         "text plus engine metadata: inference latency (ms), generated token "
         "count, tokens/second and time-to-first-token (when the engine reports "
-        "it). The optional engine_id selects the runtime (llamacpp-optimized or "
-        "transformers-baseline); omitted means the configured default engine. "
-        "Engines are loaded once and reused. Empty or whitespace-only prompts "
-        "are rejected with a 400; unknown engine ids with a 400."
+        "it). The optional engine_id selects the runtime (llamacpp-optimized); "
+        "omitted means the configured default engine. Engines are loaded once "
+        "and reused. Empty or whitespace-only prompts are rejected with a 400; "
+        "unknown engine ids with a 400."
     ),
     responses={
         status.HTTP_400_BAD_REQUEST: {

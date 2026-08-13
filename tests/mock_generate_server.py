@@ -116,7 +116,7 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         engine_id = str(payload.get("engine_id") or "llamacpp-optimized")
-        runtime = "llama.cpp" if engine_id == "llamacpp-optimized" else "transformers"
+        runtime = "llama.cpp"
 
         # Simulate inference so the loading state is visible, and report the
         # simulated latency the same way the real backend reports it.

@@ -68,20 +68,24 @@ Model was **not** modified, downloaded, or re-quantized.
 
 ## Tests
 
-All 12 test files run individually with the venv Python (no pytest installed),
+All 10 test files run individually with the venv Python (no pytest installed),
 each in its own process, zero real-model loads:
 
 ```
 PASS test_arm64_deployment      PASS test_engine_selection
 PASS test_benchmark_runner      PASS test_engines
 PASS test_benchmark_smoke       PASS test_generate_smoke
-PASS test_benchmarks_api        PASS test_inference_service_ttft
-PASS test_latency_baseline      PASS test_optimization_report
-PASS test_result_storage        PASS test_ttft_streamer
-RESULT: 12/12 PASS, 0 FAIL
+PASS test_benchmarks_api        PASS test_latency_baseline
+PASS test_optimization_report   PASS test_result_storage
+RESULT: 10/10 PASS, 0 FAIL
 ```
 
-No test was modified.
+> **Update (2026-08-13):** the FP16 Transformers baseline was removed from the
+> engine registry (STEP 10A proved it infeasible on this 7.63 GiB machine).
+> The two suites that exercised the removed baseline service
+> (`test_inference_service_ttft`, `test_ttft_streamer`) were removed with it;
+> the remaining suites were updated to the llama.cpp-only registry and all
+> pass.
 
 ## Frontend build
 
@@ -140,8 +144,7 @@ Verified programmatically (assertions passed on both
 
 Automated Chrome run against `http://localhost:3000` (backend on :8000):
 
-- Studio: header, engine selector (`llama.cpp — Q4_K_M`, `Transformers —
-  FP16`), composer ✅
+- Studio: header, engine selector (`llama.cpp — Q4_K_M`), composer ✅
 - Optimization Dashboard: `llama.cpp`, `llamacpp-optimized`,
   `Qwen2.5-3B-Instruct Q4_K_M`, **Measured**, latency 11.28 s, TTFT, 5.77
   tok/s, 2460.3 MB, 535.8 %, **69.05%**, FP16 (reference), **Not Feasible**,
@@ -205,7 +208,7 @@ artifacts and ready for the initial commit.
 | Git safety | **PASS** |
 | Model integrity | **PASS** |
 | Python compile | **PASS** |
-| Tests | **12/12** |
+| Tests | **10/10** |
 | Frontend build | **PASS** |
 | Q4_K_M smoke test | **PASS** |
 | Optimization report | **PASS** |

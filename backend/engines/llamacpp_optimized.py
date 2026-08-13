@@ -2,8 +2,7 @@
 
 ``LlamaCppOptimizedEngine`` adapts llama.cpp (via ``llama-cpp-python``) to the
 shared :class:`~engines.base.InferenceEngine` contract so the benchmark
-pipeline can later compare the Transformers baseline and the llama.cpp runtime
-through one uniform interface:
+pipeline treats runtimes uniformly:
 
 - ``load_model()``      — load a GGUF file with llama.cpp (CPU-only).
 - ``generate()``        — complete a prompt, returning the shared
@@ -25,8 +24,8 @@ CPU-only configuration
 the verified development environment (llama-cpp-python 0.3.34, CPU build).
 
 No quantization is introduced: the GGUF file is used exactly as provided.
-No performance claims are made here — measured comparisons against the
-Transformers baseline only become meaningful once the Arm64 benchmark runs.
+No performance claims are made here — measured Arm64 comparisons become
+meaningful once the Arm64 benchmark runs.
 """
 
 from __future__ import annotations

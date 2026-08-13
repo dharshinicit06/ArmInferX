@@ -70,10 +70,11 @@ with the engine selector and a composer.
 ### 3a · Show lazy loading → engine selection
 
 - Point at the header status chip: `API · http://localhost:8000`.
-- The **Inference Engine** selector shows two options:
-  - **llama.cpp — Q4_K_M** (selected) — CPU-only, 2.01 GB model footprint, streaming.
-  - **Transformers — FP16** — labeled *"hardware feasibility limited on current
-    machine"* (this is honest UI, not a broken option).
+- The **Inference Engine** selector shows the registered engine:
+  **llama.cpp — Q4_K_M** — CPU-only, 2.01 GB model footprint, streaming.
+- Say: *"The FP16 Transformers baseline proved infeasible on this 7.63 GiB
+  machine during the STEP 10A check, so the registry ships the engine that
+  actually runs here — llama.cpp Q4_K_M."*
 
 ### 3b · Run a short prompt — show streaming + metadata
 
@@ -171,7 +172,8 @@ Highlight the `"measured"` and `"not_measured"` blocks and `"generated_at"`.
 
 ## What this demo deliberately does NOT do
 
-- Loads or benchmarks the FP16 Transformers baseline (infeasible — documented limitation).
+- Loads or benchmarks the FP16 Transformers baseline (removed from the engine
+  registry — infeasible on this machine, documented limitation).
 - Runs Docker or WSL.
 - Makes any Arm64 or FP16-vs-Q4_K_M performance claim.
 - Re-runs the 5-repeat benchmark (that takes ~10+ minutes and adds new records).

@@ -1,12 +1,10 @@
 """Unit tests for the inference engine abstraction.
 
-Covers the ``InferenceEngine`` interface contract, the
-``TransformersBaselineEngine`` adapter (which must preserve the existing
-baseline behavior), and the ``LlamaCppOptimizedEngine`` (llama.cpp/GGUF). No
-real model or GPU is needed: the baseline engine is exercised through a fake
-model/tokenizer, ``load_model`` is tested with a monkeypatched loader, and
-the llama.cpp engine uses a fake ``Llama`` class so nothing is loaded from
-disk (the ~6.5 GB FP16 GGUF must not be loaded on this 8 GB laptop).
+Covers the ``InferenceEngine`` interface contract and the
+``LlamaCppOptimizedEngine`` (llama.cpp/GGUF). No real model or GPU is needed:
+``load_model`` is tested with a monkeypatched ``Llama`` class and generation is
+tested through a fake ``Llama`` so nothing is loaded from disk (the ~2 GB Q4_K_M
+GGUF must not be loaded on this 8 GB laptop).
 """
 
 import importlib
@@ -16,23 +14,14 @@ import tempfile
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
 
-import torch  # noqa: E402
-
-from api.routes.inference.inference_service import InferenceService  # noqa: E402
-from api.routes.inference.inference_service import (  # noqa: E402
-    GenerationResult as ResultFromService,
-)
 from engines import (  # noqa: E402
     EngineInfo,
-    EngineOperationUnsupportedError,
     GenerationResult,
     InferenceEngine,
     LlamaCppOptimizedEngine,
-    TransformersBaselineEngine,
 )
 from engines.llamacpp_optimized import (  # noqa: E402
     DEFAULT_MODEL_PATH,
@@ -40,47 +29,6 @@ from engines.llamacpp_optimized import (  # noqa: E402
     LlamaCppError,
     LlamaCppModelLoadError,
 )
-
-
-# ---------------------------------------------------------------------------
-# Fakes (mirror tests/test_inference_service_ttft.py)
-# ---------------------------------------------------------------------------
-
-class FakeModel:
-    config = SimpleNamespace(max_position_embeddings=4096)
-
-    def generate(self, input_ids, max_new_tokens=None, do_sample=None, streamer=None, **kwargs):
-        assert streamer is not None, "service must attach the TTFT streamer"
-        time.sleep(0.01)  # prefill + first decode step
-        streamer.put(torch.tensor([[5]]))
-        streamer.put(torch.tensor([[6]]))
-        return torch.cat([input_ids, torch.tensor([[5, 6]])], dim=1)
-
-
-class FakeTokenizer:
-    chat_template = "fake-template"  # present -> chat-template path is usable
-
-    def apply_chat_template(self, messages, tokenize=False, add_generation_prompt=True):
-        # Naive template: just concatenate the user content.
-        return "".join(m["content"] for m in messages)
-
-    def __call__(self, text, return_tensors="pt"):
-        ids = [ord(ch) % 50 + 1 for ch in text]
-        return {"input_ids": torch.tensor([ids])}
-
-    def decode(self, ids, skip_special_tokens=True):
-        return "".join(chr(int(i) % 26 + 97) for i in ids)
-
-
-def _fake_inference_model() -> SimpleNamespace:
-    return SimpleNamespace(
-        model=FakeModel(), tokenizer=FakeTokenizer(), model_id="fake-model"
-    )
-
-
-def _make_baseline_engine() -> TransformersBaselineEngine:
-    service = InferenceService(_fake_inference_model())
-    return TransformersBaselineEngine(service)
 
 
 # ---------------------------------------------------------------------------
@@ -124,93 +72,10 @@ def test_engine_info_serialization():
     print("PASS: EngineInfo.to_dict shape + defaults")
 
 
-def test_generation_result_is_shared_type():
-    # The result contract lives in engines; the baseline service re-exports
-    # the same class so existing imports keep working.
-    assert GenerationResult is ResultFromService
-    print("PASS: GenerationResult shared between engines and baseline service")
-
-
-# ---------------------------------------------------------------------------
-# TransformersBaselineEngine
-# ---------------------------------------------------------------------------
-
-def test_baseline_engine_generates_via_service():
-    engine = _make_baseline_engine()
-    result = engine.generate("hi", use_chat_template=False)
-
-    assert isinstance(result, GenerationResult)
-    assert result.generated_text == "fg"
-    assert result.generated_tokens == 2
-    assert result.ttft_ms is not None and 5 <= result.ttft_ms <= 300, result.ttft_ms
-    assert result.latency_ms >= result.ttft_ms
-    print(f"PASS: baseline engine generate -> {result.generated_text!r} (ttft={result.ttft_ms:.1f}ms)")
-
-
-def test_baseline_engine_model_info_and_properties():
-    engine = _make_baseline_engine()
-    info = engine.get_model_info()
-
-    assert isinstance(info, EngineInfo)
-    assert info.engine_id == "transformers-baseline"
-    assert info.runtime == "transformers"
-    assert info.supports_streaming is False
-    assert info.model_id == "fake-model"
-    assert info.max_context == 4096
-    assert info.loaded is True
-
-    # Convenience passthroughs used by /health.
-    assert engine.model_id == "fake-model"
-    assert engine.max_context == 4096
-    print("PASS: baseline engine model info + properties")
-
-
-def test_baseline_engine_does_not_support_streaming():
-    engine = _make_baseline_engine()
-    try:
-        engine.stream_generate("hi", use_chat_template=False)
-    except EngineOperationUnsupportedError as exc:
-        assert "transformers-baseline" in str(exc)
-        print("PASS: baseline stream_generate raises EngineOperationUnsupportedError")
-        return
-    raise AssertionError("expected EngineOperationUnsupportedError")
-
-
-def test_baseline_engine_load_model_wiring():
-    # The engine imports the loader lazily inside load_model(), so patch the
-    # loader module itself to verify the wiring without a real model on disk.
-    from api.routes.inference import model_loader as loader_mod
-
-    original = loader_mod.load_inference_model
-    captured = {}
-
-    def fake_load(model_dir, *, device, dtype, max_cpu_memory):
-        captured["model_dir"] = model_dir
-        captured["device"] = device
-        captured["dtype"] = dtype
-        captured["max_cpu_memory"] = max_cpu_memory
-        return _fake_inference_model()
-
-    loader_mod.load_inference_model = fake_load
-    try:
-        engine = TransformersBaselineEngine.load_model(
-            "/models/qwen", device="cpu", dtype="float16", max_cpu_memory="3GiB"
-        )
-    finally:
-        loader_mod.load_inference_model = original
-
-    assert captured["model_dir"] == "/models/qwen"
-    assert captured["device"] == "cpu"
-    assert captured["dtype"] == "float16"
-    assert engine.model_id == "fake-model"
-    assert engine.get_model_info().loaded is True
-    print("PASS: TransformersBaselineEngine.load_model builds a ready engine")
-
-
 # ---------------------------------------------------------------------------
 # LlamaCppOptimizedEngine (llama.cpp / GGUF)
 #
-# Validated WITHOUT loading the real ~6.5 GB FP16 GGUF (this laptop has only
+# Validated WITHOUT loading the real ~2 GB Q4_K_M GGUF (this laptop has only
 # 7.6 GiB RAM): a fake ``Llama`` class records the load configuration and
 # emits a deterministic token stream, so import / path / wiring / metadata /
 # result-shape are all verified with zero model I/O.
@@ -246,9 +111,10 @@ def _patch_llama(fake_cls):
     finally:
         mod.Llama = original
 
+
 def test_engine_works_through_generate_endpoint():
     """POST /generate must keep working when the engine is wired into
-    app.state (the baseline routing contract)."""
+    app.state (the legacy routing contract)."""
     from fastapi.testclient import TestClient  # noqa: PLC0415
 
     import main  # noqa: PLC0415
@@ -256,27 +122,28 @@ def test_engine_works_through_generate_endpoint():
 
     router_module = importlib.import_module("api.routes.inference.router")
 
-    engine = _make_baseline_engine()
-    with tempfile.TemporaryDirectory() as tmp:
-        router_module.result_store = BaselineResultStore(tmp)
-        main.app.state.inference = engine
-        client = TestClient(main.app)
+    with _patch_llama(FakeLlama):
+        engine = LlamaCppOptimizedEngine(FakeLlama(), model_id="fake-gguf")
+        with tempfile.TemporaryDirectory() as tmp:
+            router_module.result_store = BaselineResultStore(tmp)
+            main.app.state.inference = engine
+            client = TestClient(main.app)
 
-        resp = client.post("/generate", json={"prompt": "hi"})
-        assert resp.status_code == 200, resp.text
-        body = resp.json()
-        assert body["status"] == "success"
-        assert body["model"] == "fake-model"
-        assert body["response"] == "fg"
-        assert body["latency_ms"] >= 0
+            resp = client.post("/generate", json={"prompt": "hi"})
+            assert resp.status_code == 200, resp.text
+            body = resp.json()
+            assert body["status"] == "success"
+            assert body["model"] == "fake-gguf"
+            assert body["response"] == "hello"
+            assert body["latency_ms"] >= 0
 
-        # The benchmark record is still saved with all metrics.
-        files = sorted(Path(tmp).glob("baseline-*.json"))
-        assert len(files) == 1, files
-        record = json.loads(files[0].read_text(encoding="utf-8"))
-        assert record["generated_tokens"] == 2
-        assert record["ttft_ms"] is not None
-        print("PASS: TransformersBaselineEngine works through POST /generate")
+            # The benchmark record is still saved with all metrics.
+            files = sorted(Path(tmp).glob("baseline-*.json"))
+            assert len(files) == 1, files
+            record = json.loads(files[0].read_text(encoding="utf-8"))
+            assert record["generated_tokens"] == 2
+            assert record["ttft_ms"] is not None
+            print("PASS: LlamaCppOptimizedEngine works through POST /generate")
 
 
 def test_llamacpp_engine_identity_and_default_path():
@@ -370,7 +237,7 @@ def test_llamacpp_engine_generate_returns_shared_result():
     assert result.latency_ms >= 0
     assert result.ttft_ms is not None and result.ttft_ms >= 0
     assert result.generation_kwargs["max_new_tokens"] == 8
-    # Extra generation kwargs are forwarded to the runtime (baseline parity).
+    # Extra generation kwargs are forwarded to the runtime.
     assert fake.create_calls, "create_completion was never called"
     prompt, call_kwargs = fake.create_calls[-1]
     assert prompt == "hi"
@@ -433,11 +300,6 @@ if __name__ == "__main__":
     test_interface_is_abstract()
     test_interface_exposes_required_operations()
     test_engine_info_serialization()
-    test_generation_result_is_shared_type()
-    test_baseline_engine_generates_via_service()
-    test_baseline_engine_model_info_and_properties()
-    test_baseline_engine_does_not_support_streaming()
-    test_baseline_engine_load_model_wiring()
     test_engine_works_through_generate_endpoint()
     test_llamacpp_engine_identity_and_default_path()
     test_llamacpp_engine_unloaded_reports_metadata_without_model()

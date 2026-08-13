@@ -81,7 +81,7 @@ class GenerateResponse(BaseModel):
     runtime: str | None = Field(
         None,
         description=(
-            "Underlying runtime name (e.g. 'llama.cpp', 'transformers'). "
+            "Underlying runtime name (e.g. 'llama.cpp'). "
             "Null when the engine does not expose it."
         ),
     )

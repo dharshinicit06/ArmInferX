@@ -74,16 +74,15 @@ class BenchmarkRecord(BaseModel):
     engine_id: str | None = Field(
         None,
         description=(
-            "Engine that produced the run (e.g. 'llamacpp-optimized', "
-            "'transformers-baseline'). Null on records saved before engine "
-            "selection existed, so old baseline records are never conflated "
-            "with engine-tagged ones."
+            "Engine that produced the run (e.g. 'llamacpp-optimized'). Null "
+            "on records saved before engine selection existed, so old baseline "
+            "records are never conflated with engine-tagged ones."
         ),
     )
     runtime: str | None = Field(
         None,
         description=(
-            "Underlying runtime name (e.g. 'llama.cpp', 'transformers'). "
+            "Underlying runtime name (e.g. 'llama.cpp'). "
             "Null when the engine did not expose it."
         ),
     )

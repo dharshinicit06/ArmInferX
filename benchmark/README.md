@@ -16,13 +16,13 @@ The modular benchmarking subsystem lives in **`backend/benchmark/`**:
   same latency value that gets persisted as `latency_ms`, and surfaces a
   result-side `ttft_ms` (time-to-first-token) separately from total latency.
 
-Token counting is tokenizer-native: the inference service counts the actual
-output token IDs emitted by `model.generate()` (no character/word estimation),
-and throughput is `generated_tokens / (latency_ms / 1000)`. TTFT is measured
-by an instrumentation streamer attached to `model.generate()` (first token
-observed = prefill + first decode step) and does not change the generated
-output. Design stays modular so more metrics (throughput by phase) can be
-added later via `BenchmarkMetrics.extra`.
+Token counting is tokenizer-native: the llama.cpp engine counts prompt tokens
+via `Llama.tokenize` and completion tokens from the emitted stream chunks (no
+character/word estimation), and throughput is
+`generated_tokens / (latency_ms / 1000)`. TTFT is measured by the engine
+itself — llama.cpp times the first streamed output token — and is kept as a
+separate metric from total latency. Design stays modular so more metrics
+(throughput by phase) can be added later via `BenchmarkMetrics.extra`.
 
 Current optimization state: the **Q4_K_M llama.cpp engine** is implemented,
 validated, and benchmarked on this laptop (see `docs/optimization.md` and the

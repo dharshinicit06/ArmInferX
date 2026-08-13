@@ -1,17 +1,15 @@
 """Engine lifecycle manager for the HTTP application.
 
-The application may run different runtimes (``llamacpp-optimized`` today,
-``transformers-baseline`` on machines where it is feasible). Models are heavy
-(an LLM weights file), so engines are loaded **lazily on first use** and then
-**reused for every subsequent request** — never re-loaded per request, and
-never eagerly at startup (which would force-load a model the machine may not
-have room for).
+The application runs one runtime today (``llamacpp-optimized``). Models are
+heavy (an LLM weights file), so engines are loaded **lazily on first use** and
+then **reused for every subsequent request** — never re-loaded per request,
+and never eagerly at startup (which would force-load a model the machine may
+not have room for).
 
 ``EngineManager`` is the single holder of loaded engine instances. It resolves
 ``engine_id`` values through the existing registry (:mod:`engines.registry`)
-and applies per-engine load kwargs supplied at construction time (e.g. the
-baseline's model directory / device / dtype). Thread-safe so concurrent first
-requests cannot double-load a model.
+and applies per-engine load kwargs supplied at construction time. Thread-safe
+so concurrent first requests cannot double-load a model.
 """
 
 from __future__ import annotations

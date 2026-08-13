@@ -402,34 +402,6 @@ svg {
   overflow-wrap: anywhere;
 }
 
-.engine-warn {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.55rem;
-  margin-top: 0.2rem;
-  padding: 0.7rem 0.85rem;
-  color: #fde68a;
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.35);
-  border-radius: var(--radius-sm);
-  font-size: 0.84rem;
-  line-height: 1.5;
-  animation: fade-up 0.3s var(--ease) both;
-}
-
-.engine-warn svg {
-  flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-  margin-top: 2px;
-  color: #f59e0b;
-}
-
-.engine-warn strong {
-  color: #fbbf24;
-  font-weight: 700;
-}
-
 .composer-actions {
   display: flex;
   flex-wrap: wrap;

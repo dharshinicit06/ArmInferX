@@ -2,17 +2,16 @@
 
 ``BenchmarkConfig`` is the single, reusable specification of *how* a benchmark
 run is executed. It is deliberately engine-agnostic: the same config drives
-both ``TransformersBaselineEngine`` and ``LlamaCppOptimizedEngine`` so the
-benchmark procedure is identical and future Arm64 measurements are
-scientifically comparable.
+every engine so the benchmark procedure is identical and future Arm64
+measurements are scientifically comparable.
 
 Determinism policy
 ------------------
 The config contains no random parameters. ``temperature=None`` means "do not
-pass a temperature to the engines" — both engines then use their deterministic
-greedy decoding by default (Transformers: ``do_sample=False``; llama.cpp:
-``temperature=0.0``). When ``temperature`` is set it must be in ``(0, 2]``
-(the range accepted by both runtimes) and is passed verbatim to both engines.
+pass a temperature to the engines" — engines then use their deterministic
+greedy decoding by default (llama.cpp: ``temperature=0.0``). When
+``temperature`` is set it must be in ``(0, 2]`` and is passed verbatim to the
+engines.
 """
 
 from __future__ import annotations
@@ -33,10 +32,10 @@ class BenchmarkConfig:
         max_new_tokens: Output length cap passed to both engines.
         temperature: Sampling temperature in ``(0, 2]``, or ``None`` for each
             engine's deterministic greedy default (do not pass temperature).
-        chat_template: Whether the Transformers baseline should wrap the prompt
-            in the model's chat template. Defaults to ``False`` (raw
-            completion) so both engines run on the identical raw prompt — the
-            llama.cpp engine does not apply a chat template.
+        chat_template: Whether a chat-template-capable engine should wrap the
+            prompt in its chat template. Defaults to ``False`` (raw
+            completion); llama.cpp performs raw completion and never receives
+            this option.
         repeats: Number of timed repetitions. Must be >= 1.
         warmup: Number of untimed warmup calls before the timed runs. Must be
             >= 0. Warmup runs use the exact same prompt and generation kwargs.

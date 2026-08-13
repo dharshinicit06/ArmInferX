@@ -1,5 +1,12 @@
 """ArmInferX - STEP 10A: Transformers baseline feasibility check.
 
+> **Historical note (2026-08-13):** the FP16 Transformers baseline was removed
+> from the engine registry before the hackathon submission (STEP 10A proved it
+> infeasible on this machine, and the demo ships llama.cpp only). Running this
+> script now ends with an ``UnknownEngineError`` listing the available engine
+> (``llamacpp-optimized``) — which itself documents the feasibility outcome.
+> The script is kept as historical evidence of the STEP 10A check.
+
 Purpose
 -------
 Verify whether the existing ``transformers-baseline`` engine can perform ONE

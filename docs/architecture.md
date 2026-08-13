@@ -38,10 +38,9 @@ no Arm64 or FP16 numbers exist yet (see `docs/optimization.md`).
 
 Engine layer (backend/engines/)
     ENGINE_REGISTRY = {
-        "transformers-baseline": TransformersBaselineEngine,  # FP16, no streaming
         "llamacpp-optimized":    LlamaCppOptimizedEngine,     # Q4_K_M, SSE streaming
     }
-        │  both implement the same InferenceEngine interface:
+        │  implements the InferenceEngine interface:
         │  load_model / generate / stream_generate / get_model_info
         ▼
 Benchmark layer (backend/benchmark/)
@@ -99,19 +98,24 @@ The single holder of loaded engine instances:
 A plain `engine_id → engine class` map plus `load_engine(engine_id, **kwargs)`,
 the uniform entry point used by both the HTTP layer and the benchmark driver.
 
-### The two engines
+### The engine
 
-| | `TransformersBaselineEngine` | `LlamaCppOptimizedEngine` |
-|---|---|---|
-| File | `engines/transformers_baseline.py` | `engines/llamacpp_optimized.py` |
-| Model | Qwen2.5-3B-Instruct FP16 | `models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf` |
-| Loads | tokenizer + model via `api/routes/inference/model_loader.py` | GGUF via `llama_cpp.Llama`, CPU-only |
-| Streaming | `EngineOperationUnsupportedError` | `stream_generate()` → `StreamChunk`s |
-| TTFT | internal instrumentation streamer | first streamed token timing |
-| Status | not auto-loaded (infeasible on 7.63 GiB) | default engine, validated + benchmarked |
+| | `LlamaCppOptimizedEngine` |
+|---|---|
+| File | `engines/llamacpp_optimized.py` |
+| Model | `models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf` |
+| Loads | GGUF via `llama_cpp.Llama`, CPU-only |
+| Streaming | `stream_generate()` → `StreamChunk`s |
+| TTFT | first streamed token timing |
+| Status | default engine, validated + benchmarked |
 
-Both return the shared `GenerationResult` (`engines/result.py`) with
+Returns the shared `GenerationResult` (`engines/result.py`) with
 tokenizer-native `prompt_tokens` / `generated_tokens` and a `latency_ms` / `ttft_ms`.
+
+The FP16 Transformers baseline was evaluated during STEP 10A and found
+infeasible on this 7.63 GiB machine (see `docs/optimization.md`); it is not
+part of the engine registry. Its storage footprint is still compared against
+Q4_K_M in the optimization report (a footprint comparison, not a speed claim).
 
 ### Streaming (`POST /generate/stream`)
 
@@ -155,10 +159,6 @@ tokenizer-native `prompt_tokens` / `generated_tokens` and a `latency_ms` / `ttft
 | Variable | Default | Meaning |
 |---|---|---|
 | `ARMINFERX_DEFAULT_ENGINE` | `llamacpp-optimized` | engine used when a request omits `engine_id` |
-| `ARMINFERX_MODEL_DIR` | `models/downloaded/qwen2.5-3b-instruct` | baseline model directory |
-| `ARMINFERX_DEVICE` | `cpu` | baseline device |
-| `ARMINFERX_DTYPE` | `float16` | baseline dtype |
-| `ARMINFERX_MAX_CPU_MEMORY` | `3GiB` | baseline memory cap |
 
 Engine defaults (llama.cpp) are fixed for comparability: `n_ctx=2048`,
 `n_threads=8`, `n_gpu_layers=0`, greedy decoding, `max_new_tokens=64`.
