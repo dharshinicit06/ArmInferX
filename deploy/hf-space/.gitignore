@@ -1,0 +1,9 @@
+# The synced copy of the project backend (populated by sync-backend.sh).
+# It is committed only to the HF Space repo, never to the main project repo.
+backend/
+
+__pycache__/
+*.pyc
+.venv/
+results/
+models/
