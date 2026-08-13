@@ -103,11 +103,13 @@ COPY backend/ /app/backend/
 # the exact STEP 9/11 configuration; used by the in-container benchmark
 # command — see docs/arm64-deployment.md).
 COPY scripts/run_llamacpp_benchmark.py /app/scripts/run_llamacpp_benchmark.py
+COPY deploy/hf-space/download_model.py /app/download_model.py
 
 # Runtime writable area: benchmark records + /generate auto-saved records land
 # under /app/results (gitignored; bind-mount to persist on the host if wanted).
 RUN mkdir -p /app/models/gguf /app/results \
-    && chown -R arminferx:arminferx /app/results
+    && python /app/download_model.py \
+    && chown -R arminferx:arminferx /app/models /app/results
 
 USER arminferx
 WORKDIR /app/backend
