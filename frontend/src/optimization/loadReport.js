@@ -233,7 +233,7 @@ export function normalizeReport(raw) {
       subtitle: 'AI inference optimization benchmark and model-footprint analysis',
       runtime: pick(optimized, 'runtime') ?? 'llama.cpp',
       engineId: pick(optimized, 'engine_id') ?? 'llamacpp-optimized',
-      modelLabel: `${pick(q4, 'model_name') ?? 'Qwen2.5-3B-Instruct'} ${pick(optimized, 'quantization') ?? 'Q4_K_M'}`,
+      modelLabel: `${pick(q4, 'model_name') ?? 'Qwen2.5-0.5B-Instruct'} ${pick(optimized, 'quantization') ?? 'Q4_K_M'}`,
       platform: platformLabel,
       benchmarkStatus: 'Measured',
       generatedAt: pick(raw, 'generated_at'),

@@ -47,7 +47,7 @@ class GenerateResponse(BaseModel):
             "examples": [
                 {
                     "status": "success",
-                    "model": "qwen2.5-3b-instruct",
+                    "model": "qwen2.5-0.5b-instruct",
                     "response": "Artificial Intelligence (AI) is the simulation "
                     "of human intelligence in machines that are programmed to "
                     "think and learn...",

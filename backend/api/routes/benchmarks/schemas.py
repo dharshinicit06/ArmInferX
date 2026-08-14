@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 RECORD_EXAMPLE = {
     "prompt": "Explain Artificial Intelligence",
-    "model": "qwen2.5-3b-instruct",
+    "model": "qwen2.5-0.5b-instruct",
     "response": "Artificial Intelligence (AI) is the simulation of human "
     "intelligence in machines...",
     "latency_ms": 1234.56,

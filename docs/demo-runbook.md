@@ -7,7 +7,7 @@ WSL, no ARM64 hardware, and no FP16 model**. Everything runs with the verified
 
 > Pre-flight assumptions: the repo is on the laptop, `backend/.venv` exists
 > with the pinned deps (incl. `llama-cpp-python==0.3.34`), the Q4_K_M GGUF is at
-> `models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf` (~2.0 GB), and `frontend/node_modules`
+> `models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf` (~469 MB), and `frontend/node_modules`
 > is installed. Check with the commands below — the **Quick check** step.
 
 ---
@@ -18,7 +18,7 @@ WSL, no ARM64 hardware, and no FP16 model**. Everything runs with the verified
 # From the repo root — all of these must succeed:
 backend/.venv/Scripts/python.exe --version          # 3.13.x
 backend/.venv/Scripts/python.exe -c "import llama_cpp; print(llama_cpp.__version__)"   # 0.3.34
-ls -la models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf  # ~2,104,932,768 bytes
+ls -la models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf  # ~491,400,032 bytes
 ls frontend/node_modules >/dev/null && echo "node_modules OK"
 ```
 
@@ -71,7 +71,7 @@ with the engine selector and a composer.
 
 - Point at the header status chip: `API · http://localhost:8000`.
 - The **Inference Engine** selector shows the registered engine:
-  **llama.cpp — Q4_K_M** — CPU-only, 2.01 GB model footprint, streaming.
+  **llama.cpp — Q4_K_M** — CPU-only, ~469 MB model footprint, streaming.
 - Say: *"The FP16 Transformers baseline proved infeasible on this 7.63 GiB
   machine during the STEP 10A check, so the registry ships the engine that
   actually runs here — llama.cpp Q4_K_M."*
@@ -80,9 +80,9 @@ with the engine selector and a composer.
 
 - Type: `Explain what an AI inference engine is.` (the exact benchmark prompt —
   bonus: it matches the saved evidence) and press Enter.
-- **First request** includes the one-time model load (a few seconds to ~15 s
-  on this laptop — a machine-dependent estimate, **not** a measured benchmark
-  value). Say: *"The 2 GB model loads once, on demand — nothing was loaded at startup."*
+- **First request** includes the one-time model load (a couple of seconds on
+  this laptop — a machine-dependent estimate, **not** a measured benchmark
+  value). Say: *"The ~470 MB model loads once, on demand — nothing was loaded at startup."*
 - Watch the response **stream in token-by-token** (SSE) with typing dots.
 - After completion, call out the **metadata chips** on the response card:
   **Engine** `llamacpp-optimized`, **Runtime** `llama.cpp`,
@@ -109,7 +109,7 @@ memory / CPU / tokens, and that `/benchmarks/summary` averages them.
 - Click the **Optimization Dashboard** tab in the header.
 - Walk the sections:
   1. **Header badges** — Runtime `llama.cpp`, Engine `llamacpp-optimized`,
-     Model `Qwen2.5-3B-Instruct Q4_K_M`, Platform `Windows CPU`,
+     Model `Qwen2.5-0.5B-Instruct Q4_K_M`, Platform `Windows CPU`,
      Benchmark status **Measured**.
   2. **Optimization Summary** — mean latency 11.28 s, median 10.31 s, P90
      14.02 s, mean TTFT 156.5 ms, 5.77 tok/s, peak memory 2460.3 MB,
@@ -122,7 +122,7 @@ memory / CPU / tokens, and that `/benchmarks/summary` averages them.
   5. **Measured vs Not Measured** — the two columns side by side.
   6. **Benchmark Run History** — the 5 timed runs table.
   7. **Benchmark Configuration** — warmup 1, runs 5, max tokens 64, greedy,
-     no chat template, 2048 ctx, 8 threads, 0 GPU layers.
+     no chat template, 1024 ctx, 2 threads, 0 GPU layers.
 
 ### 3e · Explain the two honest caveats (rehearse these)
 
@@ -158,7 +158,7 @@ Highlight the `"measured"` and `"not_measured"` blocks and `"generated_at"`.
 
 - `Ctrl+C` the frontend (`npm run dev`) and the backend (uvicorn).
 - Optional: verify no model is resident — the backend process exiting releases
-  the ~2.4 GB of loaded model memory.
+  the ~0.6 GB of loaded model memory.
 
 ## Troubleshooting
 
@@ -166,7 +166,7 @@ Highlight the `"measured"` and `"not_measured"` blocks and `"generated_at"`.
 |---|---|
 | Frontend shows "Could not reach the backend" | Backend not started or wrong port; start uvicorn on 8000. |
 | `/generate` returns 400 "Unknown engine id" | The selector sends `engine_id`; if it drifted, refresh the page. |
-| First generation slow (includes one-time load) | Expected: the first request loads Q4_K_M (~2.4 GB RSS — peak memory 2,460 MB was measured in the STEP 9 benchmark). Subsequent prompts skip the load (lifecycle difference only — not a measured performance claim). |
+| First generation slow (includes one-time load) | Expected: the first request loads Q4_K_M (~0.6 GB RSS for the 0.5B model). Subsequent prompts skip the load (lifecycle difference only — not a measured performance claim). |
 | Optimization Dashboard loads from "bundled report copy" | Backend is down; the static `frontend/public/optimization-report.json` is served instead. |
 | `npm run dev` fails | `npm install` in `frontend/` first. |
 

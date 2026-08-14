@@ -46,8 +46,9 @@ def _build_engine_manager() -> EngineManager:
     return EngineManager(
         default_engine_id=DEFAULT_ENGINE_ID,
         engine_kwargs={
-            # llama.cpp: engine defaults only (n_ctx=2048, n_threads=8,
-            # n_gpu_layers=0, temperature=0.0, max_new_tokens=64) — unchanged.
+            # llama.cpp: engine defaults only (n_ctx=1024, n_threads=2,
+            # n_gpu_layers=0, temperature=0.0, max_new_tokens=64) — tuned for
+            # Railway's 1 GB RAM / 2 vCPU limit.
             "llamacpp-optimized": {},
         },
     )

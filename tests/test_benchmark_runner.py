@@ -344,7 +344,7 @@ def test_legacy_baseline_records_still_readable():
         store = BaselineResultStore(tmp)
         legacy = {
             "prompt": "old",
-            "model": "qwen2.5-3b-instruct",
+            "model": "qwen2.5-0.5b-instruct",
             "response": "old response",
             "latency_ms": 123.0,
             "memory_mb": 10.0,

@@ -132,7 +132,7 @@ class Handler(BaseHTTPRequestHandler):
         global _last_record
         _last_record = {
             "prompt": prompt,
-            "model": "mock-qwen2.5-3b",
+            "model": "mock-qwen2.5-0.5b",
             "response": response,
             "latency_ms": round(latency_ms, 2),
             # Simulated TTFT: a fraction of the total latency (real backend
@@ -149,7 +149,7 @@ class Handler(BaseHTTPRequestHandler):
 
         metadata = {
             "status": "success",
-            "model": "mock-qwen2.5-3b",
+            "model": "mock-qwen2.5-0.5b",
             "response": _last_record["response"],
             "latency_ms": _last_record["latency_ms"],
             "engine_id": engine_id,

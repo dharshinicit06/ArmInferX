@@ -10,25 +10,27 @@
 #   ARM64 image from x86 host:  docker buildx build --platform linux/arm64 \
 #                                 -f docker/backend/Dockerfile -t arminferx-backend .
 #
-# Model mounting strategy
+# Model download strategy
 # -----------------------
-# The ~2 GB Q4_K_M GGUF is intentionally NOT baked into the image (it is
-# gitignored and would bloat the image). It is bind-mounted at runtime at the
-# engine's *default* path, so no engine code or configuration changes:
-#
-#   -v "$PWD/models/gguf":/app/models/gguf:ro
+# The ~470 MB Q4_K_M GGUF is gitignored and therefore not present in the
+# repo. It is downloaded from Hugging Face during the image build by
+# deploy/hf-space/download_model.py (SHA-256-verified) into /app/models/gguf,
+# so no runtime bind-mount is required. This is what keeps the Railway
+# deployment (1 GB RAM / 2 vCPU) self-contained: the 0.5B Q4_K_M file is the
+# only model in the image.
 #
 # The backend is copied to /app/backend, so the code's PROJECT_ROOT resolves
 # to /app and the engine default resolves to
-# /app/models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf — exactly where the mount
-# places it.
+# /app/models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf — exactly where the
+# downloader places it.
 #
 # Lifecycle: no model is loaded at startup (lazy EngineManager); the image
 # boots with zero models and loads Q4_K_M on the first /generate request.
 #
-# Inference behavior is untouched: n_ctx=2048, n_threads=8, n_gpu_layers=0,
-# greedy decoding, max_new_tokens=64 for the benchmark. No Arm64 performance
-# claim is made here — these are build/run instructions only.
+# Inference settings (tuned for Railway 1 GB RAM / 2 vCPU): n_ctx=1024,
+# n_threads=2, n_gpu_layers=0, greedy decoding, max_new_tokens=64 for the
+# benchmark. No Arm64 performance claim is made here — these are build/run
+# instructions only.
 # =============================================================================
 
 # -- Build stage: compilers + llama-cpp-python source build ------------------
@@ -117,13 +119,14 @@ WORKDIR /app/backend
 EXPOSE 8000
 
 # Environment: CPU-only inference; llamacpp-optimized remains the default
-# engine. Engine defaults are untouched (n_ctx=2048, n_threads=8,
-# n_gpu_layers=0, greedy decoding, max_new_tokens=64 for the benchmark).
+# engine. Engine defaults (n_ctx=1024, n_threads=2, n_gpu_layers=0, greedy
+# decoding, max_new_tokens=64 for the benchmark) are tuned for Railway's
+# 1 GB RAM / 2 vCPU limit and are not overridden here.
 ENV ARMINFERX_DEFAULT_ENGINE=llamacpp-optimized \
     ARMINFERX_DEVICE=cpu
 
 # Reproducible startup: nothing is loaded at boot; engines load lazily on the
-# first request (the 2 GB Q4_K_M model is loaded once, then reused).
+# first request (the ~470 MB Q4_K_M model is loaded once, then reused).
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 # /health returns 200 immediately (no model is loaded at startup), so this

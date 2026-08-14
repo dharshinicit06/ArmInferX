@@ -11,7 +11,7 @@ Usage (from the repo root):
 
 Procedure (per the STEP 9 spec):
     engine_id      = llamacpp-optimized   (llama.cpp runtime, CPU-only)
-    model          = models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf (default)
+    model          = models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf (default)
     max_new_tokens = 64
     temperature    = None  -> llama.cpp greedy default (0.0)
     chat_template  = False
@@ -62,7 +62,7 @@ for stream in (sys.stdout, sys.stderr):
 
 ENGINE_ID = "llamacpp-optimized"
 EXPECTED_RUNTIME = "llama.cpp"
-DEFAULT_MODEL = PROJECT_ROOT / "models" / "gguf" / "qwen2.5-3b-instruct-q4_k_m.gguf"
+DEFAULT_MODEL = PROJECT_ROOT / "models" / "gguf" / "qwen2.5-0.5b-instruct-q4_k_m.gguf"
 
 # One deterministic benchmark prompt, suitable for comparing inference
 # performance (identical for every warmup/timed call).
@@ -73,7 +73,7 @@ def build_config() -> BenchmarkConfig:
     """The exact STEP 9/11 benchmark procedure (single source of truth).
 
     Module-level so deployment tests can verify the procedure without
-    loading the 2 GB model or running the benchmark.
+    loading the ~470 MB model or running the benchmark.
     """
     return BenchmarkConfig(
         prompt=PROMPT,

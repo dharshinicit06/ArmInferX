@@ -3,7 +3,7 @@
 This driver composes ONLY existing pieces:
 
 - ``engines.registry.load_engine("llamacpp-optimized")`` — the real Q4_K_M
-  engine (defaults untouched: n_ctx=2048, n_threads=8, n_gpu_layers=0).
+  engine (defaults: n_ctx=1024, n_threads=2, n_gpu_layers=0).
 - ``benchmark.BenchmarkConfig`` + ``benchmark.BenchmarkRunner`` — the exact
   STEP 9 procedure (prompt, max_new_tokens=64, temperature=None/greedy,
   chat_template=False, warmup=1, repeats=5) is RE-RUN every time so the
@@ -64,7 +64,7 @@ WARMUP = 1
 REPEATS = 5
 
 GGUF_DIR = PROJECT_ROOT / "models" / "gguf"
-Q4_GGUF = GGUF_DIR / "qwen2.5-3b-instruct-q4_k_m.gguf"
+Q4_GGUF = GGUF_DIR / "qwen2.5-0.5b-instruct-q4_k_m.gguf"
 FP16_SHARDS = [
     GGUF_DIR / "qwen2.5-3b-instruct-fp16-00001-of-00002.gguf",
     GGUF_DIR / "qwen2.5-3b-instruct-fp16-00002-of-00002.gguf",
@@ -280,8 +280,8 @@ def main() -> int:
         "runtime": "llama.cpp",
         "quantization": "Q4_K_M",
         "model_path": str(Q4_GGUF),
-        "n_ctx": 2048,
-        "n_threads": 8,
+        "n_ctx": 1024,
+        "n_threads": 2,
         "n_gpu_layers": 0,
         "temperature": None,
         "decoding": "greedy (deterministic)",
@@ -302,7 +302,7 @@ def main() -> int:
         optimized={
             "engine_id": ENGINE_ID,
             "runtime": "llama.cpp",
-            "model_id": q4_meta.get("model_name") or "qwen2.5-3b-instruct",
+            "model_id": q4_meta.get("model_name") or "qwen2.5-0.5b-instruct",
             "quantization": "Q4_K_M",
             "status": "validated",
             "label": q4_label,

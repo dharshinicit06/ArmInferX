@@ -15,8 +15,8 @@ container using the validated Q4_K_M llama.cpp engine.
 |---|---|
 | Backend | FastAPI + uvicorn, `main:app` on port 8000 |
 | Engine | `llamacpp-optimized` (default), runtime `llama.cpp` |
-| Model | `models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf` (Q4_K_M, CPU-only) |
-| Engine config | untouched defaults: `n_ctx=2048`, `n_threads=8`, `n_gpu_layers=0`, greedy decoding, `max_new_tokens=64` (benchmark) |
+| Model | `models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf` (Q4_K_M, CPU-only) |
+| Engine config | defaults: `n_ctx=1024`, `n_threads=2`, `n_gpu_layers=0`, greedy decoding, `max_new_tokens=64` (benchmark) — tuned for 1 GB RAM / 2 vCPU |
 | Benchmark | the existing STEP 9/11 procedure via `BenchmarkRunner` (same prompt + config) |
 
 ## Files involved
@@ -75,11 +75,13 @@ docker buildx build --platform linux/arm64 \
   -f docker/backend/Dockerfile -t arminferx-backend .
 ```
 
-## Model mounting strategy
+## Model strategy
 
-The Q4_K_M GGUF is gitignored and ~2 GB, so it is never baked into the image.
-It is mounted read-only **at the engine's default path**, keeping all engine
-code and configuration identical to the validated environment:
+The Q4_K_M GGUF is gitignored and ~470 MB. `docker/backend/Dockerfile`
+downloads it from Hugging Face **at build time** and SHA-256-verifies it into
+`/app/models/gguf` (this is what the Railway deployment uses — no runtime
+mount needed). The read-only bind-mount below is an optional alternative that
+keeps the model out of the image; the file is identical either way:
 
 ```bash
 docker run --rm -d --name arminferx \
@@ -90,8 +92,9 @@ docker run --rm -d --name arminferx \
 
 `backend/` is copied to `/app/backend/` in the image, so the code's
 `PROJECT_ROOT` is `/app` and the engine default resolves to
-`/app/models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf` — exactly the mount point.
-`docker-compose.yml` does the same mount automatically.
+`/app/models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf` — exactly where the
+downloader (or the mount) places it. `docker-compose.yml` mounts the same
+directory automatically.
 
 ## Configuration (environment)
 
@@ -130,7 +133,7 @@ docker compose exec backend python -c \
   "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/health').read().decode())"
 ```
 
-Real inference verification (loads Q4_K_M once; ~2.4 GB RSS):
+Real inference verification (loads Q4_K_M once; ~0.5–0.8 GB RSS):
 
 ```bash
 curl -s -X POST http://localhost:8000/generate \
@@ -171,12 +174,12 @@ llama-cpp-python + flag verification → model mount + SHA-256 check → startup
 /generate` requests (prompt `"Hello! Who are you?"`, `engine_id
 llamacpp-optimized`) → `/health` after inference
 (`loaded_engines=["llamacpp-optimized"]`) → engine-config verification
-(n_ctx=2048, n_threads=8, n_gpu_layers=0, greedy, max_new_tokens=64). It
+(n_ctx=1024, n_threads=2, n_gpu_layers=0, greedy, max_new_tokens=64). It
 stops with a FAIL at the exact stage on any problem and never runs the
 5-repeat benchmark.
 
-On the ARM64 host (from the repo root; the ~2 GB GGUF is gitignored, so copy
-it there — see the script header for `scp` instructions):
+On the ARM64 host (from the repo root; the ~470 MB GGUF is gitignored, so
+copy it there — see the script header for `scp` instructions):
 
 ```bash
 bash scripts/arm64_deploy_smoke.sh              # full run (build included)
@@ -184,7 +187,7 @@ bash scripts/arm64_deploy_smoke.sh --skip-build # reuse an existing image
 ```
 
 The script asserts the verified Q4_K_M SHA-256
-(`626b4a66…c62d`) on the host **and** inside the container, and confirms the
+(`74a4da8c…a9db`) on the host **and** inside the container, and confirms the
 STEP 14A build flags (`--no-binary`, `-DGGML_NATIVE=OFF`, `-DGGML_OPENMP=ON`)
 are still present in the Dockerfile.
 

@@ -92,7 +92,7 @@ const ENGINE_OPTIONS = [
     runtime: 'llama.cpp',
     device: 'CPU',
     supportsStreaming: true,
-    context: 'Qwen2.5-3B-Instruct Q4_K_M · CPU-only · 2.01 GB model footprint',
+    context: 'Qwen2.5-0.5B-Instruct Q4_K_M · CPU-only · ~469 MB model footprint',
   },
 ]
 

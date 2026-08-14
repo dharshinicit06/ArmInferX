@@ -13,7 +13,8 @@ A demo-ready inference studio that runs a **quantized (Q4_K_M) llama.cpp** LLM
 runtime, measures real inference metrics, and visualizes the evidence in a web
 dashboard — all on plain CPU. The optimization story is a measured
 **footprint/feasibility** result: the FP16 Transformers baseline could not run
-on this 7.63 GiB machine, while Q4_K_M runs and is 69.05% smaller.
+on this 7.63 GiB machine, while the Qwen2.5-0.5B-Instruct Q4_K_M model runs
+and is ~93% smaller on disk.
 
 </div>
 
@@ -130,7 +131,7 @@ Full details: **`docs/architecture.md`**.
 | | `llamacpp-optimized` |
 |---|---|
 | Runtime | **llama.cpp** (llama-cpp-python) |
-| Model | Qwen2.5-3B-Instruct **Q4_K_M** (GGUF, single file) |
+| Model | Qwen2.5-0.5B-Instruct **Q4_K_M** (GGUF, single file) |
 | Device | CPU-only (`n_gpu_layers=0`) |
 | Streaming | ✅ SSE streaming |
 | Status on this laptop | ✅ validated, benchmarked |
@@ -152,7 +153,7 @@ Qwen2.5-3B-Instruct (FP16, ~6.5 GB on disk)
 FP16 baseline infeasible — watchdog aborted at 159–263 MB free RAM (safely)
         │
         ▼
-Qwen2.5-3B-Instruct Q4_K_M — single-file GGUF, ~2.0 GB on disk
+Qwen2.5-0.5B-Instruct Q4_K_M — single-file GGUF, ~469 MB on disk
         │
         ▼  llama.cpp CPU runtime (llama-cpp-python 0.3.34, n_gpu_layers=0)
 CPU inference validated → 5-run benchmark persisted → evidence report generated
@@ -162,33 +163,40 @@ CPU inference validated → 5-run benchmark persisted → evidence report genera
 
 | Fact | Value |
 |---|---|
-| File | `qwen2.5-3b-instruct-q4_k_m.gguf` (single file) |
-| File size | 2,104,932,768 bytes ≈ **2,007.4 MB** |
-| Parameters | 3,397,103,616 (3.4B) |
-| GGUF version / file type | v3 / `Q4_K_M` (tensor mix: 217 Q4_K, 37 Q6_K, 181 F32) |
-| Architecture | qwen2 · model context length 32768 (engine runs `n_ctx=2048`) |
-| SHA-256 | `626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d` |
+| File | `qwen2.5-0.5b-instruct-q4_k_m.gguf` (single file) |
+| File size | 491,400,032 bytes ≈ **468.6 MB** |
+| Parameters | 630,167,424 (0.63B per tensor table) |
+| GGUF version / file type | v3 / `Q4_K_M` (tensor mix: 133 Q5_0, 121 F32, 13 Q8_0, 12 Q6_K, 12 Q4_K) |
+| Architecture | qwen2 · model context length 32768 (engine runs `n_ctx=1024`) |
+| SHA-256 | `74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db` |
 
 ### Storage footprint (measured, storage only)
 
 | Model | Size on disk | Runs on this laptop? |
 |---|---|---|
-| FP16 (2 GGUF shards) | 6,800,646,784 bytes ≈ **6,485.6 MB** | ❌ |
-| **Q4_K_M** (1 GGUF file) | 2,104,932,768 bytes ≈ **2,007.4 MB** | ✅ |
+| FP16 (3B, 2 GGUF shards) | 6,800,646,784 bytes ≈ **6,485.6 MB** | ❌ |
+| **Q4_K_M** (0.5B, 1 GGUF file) | 491,400,032 bytes ≈ **468.6 MB** | ✅ |
 
-**Storage reduction: 69.05%** (4,478.2 MB). This is a *footprint* comparison —
-it implies **no** inference speedup. No FP16 latency/throughput exists, so no
-percentage performance improvement over FP16 is claimed.
+**Storage reduction: 92.77%** (6,017.0 MB). This is a *footprint* comparison —
+it implies **no** inference speedup, and the reduction now includes the smaller
+0.5B model (not a pure 3B quantization). No FP16 latency/throughput exists, so
+no percentage performance improvement over FP16 is claimed.
 
 ---
 
 ## Measured results (canonical, from `results/optimization_report.json`)
 
-Benchmark: engine `llamacpp-optimized`, prompt `"Explain what an AI inference
-engine is."` (9 prompt tokens), `max_new_tokens=64`, greedy (`temperature=None`),
-`chat_template=False`, 1 warmup + **5 timed runs**, `n_ctx=2048`, `n_threads=8`,
-`n_gpu_layers=0`. Hardware: Windows 11 AMD64 laptop, 7.63 GiB RAM, 8 logical / 6
-physical CPUs.
+> **Note:** the benchmark evidence below was measured on this laptop with the
+> previous **Qwen2.5-3B-Instruct Q4_K_M** model (`n_ctx=2048`, `n_threads=8`).
+> The deployed model is now **Qwen2.5-0.5B-Instruct Q4_K_M** (`n_ctx=1024`,
+> `n_threads=2`); re-run `scripts/run_optimization_report.py` to refresh
+> `results/optimization_report.json` and the bundled dashboard copy.
+
+Benchmark (as recorded in the report): engine `llamacpp-optimized`, prompt
+`"Explain what an AI inference engine is."` (9 prompt tokens),
+`max_new_tokens=64`, greedy (`temperature=None`), `chat_template=False`,
+1 warmup + **5 timed runs**. Hardware: Windows 11 AMD64 laptop, 7.63 GiB RAM,
+8 logical / 6 physical CPUs.
 
 | Metric | Value |
 |---|---|
@@ -286,7 +294,7 @@ pip install -r requirements.txt   # API deps
 pip install -r requirements-ml.txt  # optional: torch/transformers (model verify/feasibility scripts)
 pip install llama-cpp-python==0.3.34  # llama.cpp runtime (validated version)
 
-# Model — the Q4_K_M GGUF must sit at models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf
+# Model — the Q4_K_M GGUF must sit at models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf
 # (gitignored; copy it in or fetch it from HuggingFace). The FP16 shards are
 # NOT required for the demo — the engine never loads them.
 

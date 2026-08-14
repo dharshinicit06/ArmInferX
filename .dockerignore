@@ -2,9 +2,9 @@
 # ArmInferX — Docker build context exclusions
 # =============================================================================
 # Keeps the build context small and prevents host-local state from leaking
-# into the image. The Q4_K_M GGUF is intentionally NOT baked into the image:
-# it is bind-mounted at runtime (see docker-compose.yml and
-# docs/arm64-deployment.md).
+# into the image. The Q4_K_M GGUF is gitignored and downloaded from Hugging
+# Face at build time (deploy/hf-space/download_model.py, SHA-256-verified);
+# the host models/ dir is never copied into the image.
 
 # --- Python ---
 __pycache__/

@@ -45,9 +45,10 @@ registry as `llamacpp-optimized` (`runtime = llama.cpp`). It runs GGUF models
 through llama.cpp (via `llama-cpp-python`) on CPU only (`n_gpu_layers=0`),
 exposing the `InferenceEngine` interface.
 
-- **Default optimized model:** Qwen2.5-3B-Instruct **Q4_K_M**
-  (`models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf`, single-file GGUF;
-  `n_ctx=2048`, `n_threads=8`, greedy decoding).
+- **Default optimized model:** Qwen2.5-0.5B-Instruct **Q4_K_M**
+  (`models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf`, single-file GGUF;
+  `n_ctx=1024`, `n_threads=2`, greedy decoding — tuned for 1 GB RAM /
+  2 vCPU hosts such as Railway).
 - **CPU-only inference has been validated successfully** on the Windows
   development machine with llama-cpp-python 0.3.34.
 - **The common benchmark layer supports the engine:** `BenchmarkConfig`,
@@ -157,8 +158,8 @@ backend/
 
 **No model is loaded at startup.** An `EngineManager` (in `app.state.engine_manager`)
 loads the requested engine lazily on first use and reuses it for every
-subsequent request — the 2 GB Q4_K_M model is loaded once per process, never
-per request. The default engine is `llamacpp-optimized`, overridable via
+subsequent request — the ~470 MB Q4_K_M model is loaded once per process,
+never per request. The default engine is `llamacpp-optimized`, overridable via
 `ARMINFERX_DEFAULT_ENGINE`.
 
 `POST /generate` accepts an optional `engine_id` (`llamacpp-optimized`)

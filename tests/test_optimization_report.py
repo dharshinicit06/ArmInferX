@@ -137,7 +137,7 @@ def test_parse_synthetic_gguf_metadata():
             path,
             kv={
                 "general.architecture": (_VAL["string"], "qwen2"),
-                "general.name": (_VAL["string"], "Qwen2.5-3B-Instruct"),
+                "general.name": (_VAL["string"], "Qwen2.5-0.5B-Instruct"),
                 "general.file_type": (_VAL["uint32"], 15),  # legacy: Q4_K_M
                 "general.quantization_version": (_VAL["uint32"], 2),
                 "qwen2.context_length": (_VAL["uint32"], 2048),
@@ -154,7 +154,7 @@ def test_parse_synthetic_gguf_metadata():
     assert meta["gguf_version"] == 3
     assert meta["tensor_count"] == 0
     assert meta["architecture"] == "qwen2"
-    assert meta["model_name"] == "Qwen2.5-3B-Instruct"
+    assert meta["model_name"] == "Qwen2.5-0.5B-Instruct"
     assert meta["quantization_version"] == 2
     assert meta["context_length"] == 2048
     assert meta["file_type"] == {"code": 15, "name": "Q4_K_M"}
@@ -316,8 +316,8 @@ def _sample_benchmark() -> dict:
     return {
         "engine_id": "llamacpp-optimized",
         "runtime": "llama.cpp",
-        "model_id": "qwen2.5-3b-instruct-q4_k_m",
-        "model_path": "/models/qwen2.5-3b-instruct-q4_k_m.gguf",
+        "model_id": "qwen2.5-0.5b-instruct-q4_k_m",
+        "model_path": "/models/qwen2.5-0.5b-instruct-q4_k_m.gguf",
         "prompt": "Explain what an AI inference engine is.",
         "prompt_tokens": 9,
         "warmup": 1,

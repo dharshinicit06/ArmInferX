@@ -18,14 +18,15 @@ anyone) can open the demo from a browser without touching your laptop.
 | **A. ARM64 cloud VM (Graviton / Ampere)** | The *actual* ArmInferX story: Arm64 cloud inference | ~1–2 h | AWS account, ~8 GiB RAM VM, $/hr cost |
 | **B. AMD64 VPS** | Fastest way to a working public URL | ~30–45 min | Any Linux VPS ≥ 8 GiB RAM, Docker + Compose |
 
-Both paths run **CPU-only llama.cpp with the same Q4_K_M GGUF**. Path B is a
-quick public demo; Path A additionally exercises the ARM64 deployment story
-(`docs/arm64-deployment.md` + the STEP 14B runbook `docs/step14b-runbook.md`).
+Both paths run **CPU-only llama.cpp with the same Q4_K_M GGUF**
+(Qwen2.5-0.5B-Instruct). Path B is a quick public demo; Path A additionally
+exercises the ARM64 deployment story (`docs/arm64-deployment.md` + the STEP
+14B runbook `docs/step14b-runbook.md`).
 
-> **Memory requirement (both paths):** the Q4_K_M model loads to ~2.0–2.5 GB
-> RSS. A VM with **4 GiB RAM is too tight** (the dev laptop with 7.63 GiB
-> worked); choose **8 GiB** to be safe. Never select the FP16 Transformers
-> baseline on such machines — it needs ≥ 16 GiB.
+> **Memory requirement (both paths):** the 0.5B Q4_K_M model loads to roughly
+> **0.5–0.8 GB RSS**, so a **1 GB RAM instance (e.g. Railway) or a 2 GiB VM is
+> sufficient**. Never select the FP16 Transformers baseline on such machines —
+> it needs ≥ 16 GiB.
 
 ---
 
@@ -41,7 +42,7 @@ Browser  ──►  Frontend (nginx :80)   ──►   Backend (FastAPI :8000)  
 | Backend | `docker/backend/Dockerfile` | Multi-stage, llama.cpp-only, non-root runtime |
 | Frontend | `docker/frontend/Dockerfile` + `nginx.conf` | Multi-stage (node build → nginx static), SPA fallback |
 | Compose | `docker-compose.yml` | `backend` (:8000) + `frontend` (:8080→:80) services |
-| Model | `models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf` | **Not** in the image; bind-mounted `:ro` (gitignored, ~2 GB) |
+| Model | `models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf` | Downloaded into the image at build time, SHA-256-verified (gitignored, ~470 MB); the compose bind-mount below is optional |
 | CORS | `ARMINFERX_CORS_ORIGINS` env var on the backend | Backend allows the deployed frontend origin |
 | API URL | `VITE_API_URL` build arg on the frontend | Baked into the JS bundle so the UI knows where the API lives |
 
@@ -67,13 +68,15 @@ Any Linux VPS with **≥ 8 GiB RAM**, Docker + Docker Compose plugin installed.
 
 ```bash
 git clone <your-repo-url> /opt/arminferx && cd /opt/arminferx
-# The ~2 GB GGUF is gitignored, so copy it separately (e.g. scp from your
-# laptop): scp models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf \
-#   user@<VM-IP>:~/arminferx/models/gguf/
-mkdir -p models/gguf && mv ~/qwen2.5-3b-instruct-q4_k_m.gguf models/gguf/
-# Verify identity before running anything:
-sha256sum models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf
-# expected: 626b4a66…c62d  (the exact verified hash — see scripts/verify_model.py)
+# The image downloads + verifies the GGUF at build time, so no manual copy is
+# required. Only if you prefer the read-only bind-mount path (docker-compose
+# mounts ./models/gguf): copy models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf
+# there yourself, e.g.
+#   scp models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf user@<VM-IP>:~/arminferx/models/gguf/
+mkdir -p models/gguf
+# Optional identity check of the file you copied:
+sha256sum models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf
+# expected: 74a4da8c…a9db  (the exact verified hash)
 ```
 
 ### 3. Configure and build
@@ -88,8 +91,9 @@ docker compose up --build -d
 What happens:
 - `frontend` builds with the API URL baked in, serves the SPA on the VM's
   port **8080** (`8080:80`).
-- `backend` starts with nothing loaded (lazy `EngineManager`), mounts the GGUF
-  read-only, and allows the frontend origin.
+- `backend` starts with nothing loaded (lazy `EngineManager`), downloads and
+  SHA-256-verifies the GGUF during the image build, and allows the frontend
+  origin.
 
 ### 4. Open your firewall
 
@@ -117,7 +121,7 @@ Follow this runbook *plus* the existing **STEP 14A / STEP 14B** material, which
 were written exactly for this moment:
 
 1. **Provision an ARM64 VM** — e.g. AWS Graviton (`t4g.2xlarge` = 8 vCPU /
-   32 GiB, or `c7g.large` if you must go smaller but stay ≥ 8 GiB), Ubuntu
+   32 GiB, or `c7g.large` if you must go smaller but stay ≥ 2 GiB), Ubuntu
    22.04/24.04, Docker installed.
 2. **Copy the repo + GGUF** exactly as in Path B step 2.
 3. **Build the ARM64 image natively** on the ARM64 host (no emulation needed):
@@ -164,8 +168,9 @@ were written exactly for this moment:
 | `ARMINFERX_DEVICE` | compose env → backend | `cpu` | CPU-only inference (unchanged) |
 | `INSTALL_BASELINE_DEPS` | backend build arg | `0` | Set `1` only on ≥ 16 GiB hosts to build the FP16 baseline deps |
 
-Engine defaults (`n_ctx=2048`, `n_threads=8`, `n_gpu_layers=0`, greedy,
-`max_new_tokens=64` for the benchmark) are untouched everywhere.
+Engine defaults (`n_ctx=1024`, `n_threads=2`, `n_gpu_layers=0`, greedy,
+`max_new_tokens=64` for the benchmark) are tuned for 1 GB RAM / 2 vCPU hosts
+and are not overridden anywhere.
 
 ---
 

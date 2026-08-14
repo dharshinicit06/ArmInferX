@@ -16,7 +16,7 @@ large memory footprint (~6.2 GB fp16 weights)
         ↓
 FP16 baseline infeasible on this 7.63 GiB RAM laptop
         ↓      (STEP 10A feasibility watchdog aborted safely)
-Qwen2.5-3B-Instruct Q4_K_M (GGUF)
+Qwen2.5-0.5B-Instruct Q4_K_M (GGUF)
         ↓
 smaller model footprint (storage reduction measured)
         ↓
@@ -64,9 +64,10 @@ The Transformers FP16 baseline **could not run inference** on this machine:
 
 - Engine: `llamacpp-optimized` (`llama.cpp` runtime) loaded via
   `engines.registry.load_engine`.
-- Model: `models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf` (default engine path).
-- Engine defaults untouched: `n_ctx=2048`, `n_threads=8`, `n_gpu_layers=0`,
-  greedy decoding (`temperature=None` → llama.cpp default 0.0).
+- Model: `models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf` (default engine path).
+- Engine defaults: `n_ctx=1024`, `n_threads=2`, `n_gpu_layers=0`, greedy
+  decoding (`temperature=None` → llama.cpp default 0.0) — tuned for 1 GB RAM /
+  2 vCPU hosts such as Railway.
 - Procedure: `BenchmarkConfig(prompt="Explain what an AI inference engine is.",
   max_new_tokens=64, temperature=None, chat_template=False, warmup=1,
   repeats=5)` executed by `BenchmarkRunner` → records under

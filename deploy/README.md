@@ -9,13 +9,13 @@ Browser ──► Frontend (Vercel, static React) ──► Backend (Hugging Fac
 
 | Piece | Host | Why |
 |---|---|---|
-| Backend | **Hugging Face Spaces (Docker)** | Free 16 GB RAM / 2 vCPU CPU Basic tier, public URL, built for ML demos; can hold the 2 GB model + 2.5 GB inference peak |
+| Backend | **Hugging Face Spaces (Docker)** | Free 16 GB RAM / 2 vCPU CPU Basic tier, public URL, built for ML demos; easily fits the ~470 MB model (~0.6–0.8 GB peak) |
 | Frontend | **Vercel** | Free static hosting for the React build; CDN-served |
 
-> **Why not Vercel for the backend?** The API runs llama.cpp with a 2 GB GGUF
-> model at ~2.5 GB peak RAM and sustained CPU per generation. That is a
-> long-running Python workload — Vercel is for frontend/edge, not this. HF
-> Spaces gives you a real container with the RAM for free.
+> **Why not Vercel for the backend?** The API runs llama.cpp with a ~470 MB
+> GGUF model (Qwen2.5-0.5B-Instruct Q4_K_M) at ~0.6–0.8 GB peak RAM and
+> sustained CPU per generation. That is a long-running Python workload — Vercel
+> is for frontend/edge, not this. HF Spaces gives you a real container for free.
 
 ---
 
@@ -54,7 +54,7 @@ git commit -m "Deploy ArmInferX backend"
 git push
 ```
 
-HF builds the image (downloads + verifies the ~2 GB Q4_K_M GGUF), then your
+HF builds the image (downloads + verifies the ~470 MB Q4_K_M GGUF), then your
 Space is live at:
 
 ```
@@ -81,7 +81,7 @@ curl -s https://<user>-arminferx.hf.space/health
 curl -s -X POST https://<user>-arminferx.hf.space/generate \
   -H 'Content-Type: application/json' \
   -d '{"prompt":"Explain what an AI inference engine is.","engine_id":"llamacpp-optimized"}'
-# First call loads the model (~16–60 s); later calls stream back in seconds.
+# First call loads the model (~2–15 s); later calls stream back in seconds.
 ```
 
 ---
@@ -132,5 +132,5 @@ and Optimization Dashboard both work against the live API.
 - **Persistence:** benchmark records write to `/app/results` inside the
   container (ephemeral on Spaces). Everything the dashboard needs also ships
   in the bundled static report, so this is non-blocking.
-- **Rebuilds:** every push to the Space repo rebuilds the image; the 2 GB
+- **Rebuilds:** every push to the Space repo rebuilds the image; the ~470 MB
   download is cached in the build layer when unchanged.

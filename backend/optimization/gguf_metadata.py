@@ -3,8 +3,8 @@
 Parses the **actual bytes** of a GGUF file — header magic/version, the
 key-value metadata table and the tensor-info table — and computes a SHA-256,
 so model facts are validated from the file itself rather than assumed from a
-filename. No model is loaded into memory (a ~2 GB Q4_K_M file needs only a few
-MB of Python objects), and the output is deterministic for a given file.
+filename. No model is loaded into memory (a ~470 MB Q4_K_M file needs only a
+few MB of Python objects), and the output is deterministic for a given file.
 
 Supported surface (GGUF v3 layout):
 

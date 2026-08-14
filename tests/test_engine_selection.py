@@ -1,7 +1,7 @@
 """STEP 13 tests: engine selection, lifecycle, schema, errors, streaming.
 
 Uses fake engines (registered into the engine registry under test ids) — the
-real 2 GB Q4_K_M model is never loaded. Verifies:
+real ~470 MB Q4_K_M model is never loaded. Verifies:
 
 1. engine_id request parsing
 2. registry resolution

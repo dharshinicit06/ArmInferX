@@ -9,7 +9,7 @@
 #
 #   1. HF Spaces requires the app to listen on port 7860 (app_port in the
 #      Space card README.md metadata).
-#   2. The ~2 GB GGUF is gitignored and cannot be bind-mounted on Spaces, so
+#   2. The ~470 MB GGUF is gitignored and cannot be bind-mounted on Spaces, so
 #      it is downloaded from Hugging Face during the image build and
 #      SHA-256-verified (download_model.py).
 #
@@ -86,8 +86,9 @@ WORKDIR /app/backend
 EXPOSE 7860
 
 # CPU-only inference; llamacpp-optimized remains the default engine. Engine
-# defaults are untouched (n_ctx=2048, n_threads=8, n_gpu_layers=0, greedy,
-# max_new_tokens=64). Override ARMINFERX_CORS_ORIGINS in the Space's
+# defaults (n_ctx=1024, n_threads=2, n_gpu_layers=0, greedy,
+# max_new_tokens=64) are tuned for low-memory hosts. Override
+# ARMINFERX_CORS_ORIGINS in the Space's
 # "Variables and secrets" settings with the deployed frontend origin, e.g.
 #   ARMINFERX_CORS_ORIGINS=https://arminferx.vercel.app
 ENV ARMINFERX_DEFAULT_ENGINE=llamacpp-optimized \

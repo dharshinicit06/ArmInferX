@@ -7,7 +7,7 @@ Docker engine, no real model load, and no Arm64 hardware:
 - the image layout (/app/backend) keeps the engine's default model path
   consistent with the documented read-only mount (/app/models/gguf);
 - the backend Dockerfile pins the llama-cpp-python build strategy for
-  aarch64 and never bakes the ~2 GB GGUF into the image;
+  aarch64 and downloads the ~470 MB GGUF at build time (SHA-256-verified);
 - docker-compose mounts the same Q4_K_M file and keeps
   llamacpp-optimized as the default engine;
 - the deployment docs make no Arm64 performance claim.
@@ -67,7 +67,7 @@ def test_step9_11_procedure_config():
 
 def test_driver_default_model_is_q4_k_m():
     driver = _load_driver()
-    assert driver.DEFAULT_MODEL.name == "qwen2.5-3b-instruct-q4_k_m.gguf"
+    assert driver.DEFAULT_MODEL.name == "qwen2.5-0.5b-instruct-q4_k_m.gguf"
     print("PASS: driver targets the same Q4_K_M GGUF as STEP 9/11")
 
 
@@ -80,7 +80,7 @@ def test_engine_default_path_matches_image_mount():
     # lives at /app/backend, so PROJECT_ROOT == /app and the mount point
     # /app/models/gguf must line up with this relative path.
     relative = DEFAULT_MODEL_PATH.relative_to(ENGINE_ROOT)
-    assert relative == Path("models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf"), relative
+    assert relative == Path("models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf"), relative
     assert DEFAULT_MODEL_PATH.is_file(), f"GGUF not found at {DEFAULT_MODEL_PATH}"
     print(f"PASS: engine default path relative to root = {relative.as_posix()}")
     print(f"      -> image mount /app/models/gguf resolves the same Q4_K_M file")

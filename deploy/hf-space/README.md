@@ -49,7 +49,7 @@ curl -s -X POST https://<your-username>-arminferx.hf.space/generate \
   -d '{"prompt":"Explain what an AI inference engine is.","engine_id":"llamacpp-optimized"}'
 ```
 
-> The first `/generate` loads the ~2 GB model into memory (~16–60 s depending
+> The first `/generate` loads the ~470 MB model into memory (~2–15 s depending
 > on the host), then it stays cached for the process lifetime.
 
 ## Configuration

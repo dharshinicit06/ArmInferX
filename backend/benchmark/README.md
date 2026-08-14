@@ -11,7 +11,7 @@ Run the **exact same benchmark procedure** against the engine:
 
 | engine_id | runtime | model |
 |---|---|---|
-| `llamacpp-optimized` | `llama.cpp` | Qwen2.5-3B-Instruct Q4_K_M (GGUF, single file) |
+| `llamacpp-optimized` | `llama.cpp` | Qwen2.5-0.5B-Instruct Q4_K_M (GGUF, single file) |
 
 The engine implements the shared `InferenceEngine` interface
 (`load_model` / `generate` / `get_model_info`).

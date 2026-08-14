@@ -19,15 +19,15 @@
 #                               generated tokens, tokens/sec, TTFT
 #   [9] model in container      size + streaming SHA-256 of the mounted GGUF
 #  [10] /health after           loaded_engines=["llamacpp-optimized"]
-#  [11] configuration           n_ctx=2048, n_threads=8, n_gpu_layers=0,
-#                               greedy decoding, max_new_tokens=64 (unchanged)
+#  [11] configuration           n_ctx=1024, n_threads=2, n_gpu_layers=0,
+#                               greedy decoding, max_new_tokens=64
 #  [12] summary
 #
 # The 5-repeat benchmark is deliberately NOT run. No FP16/Windows comparisons.
 #
 # Getting the repo + model to the host (run on the DEV machine first):
 #   git clone <your-repo-url> ArmInferX && cd ArmInferX
-#   scp -r models/gguf user@<arm64-host>:<path>/ArmInferX/models/   # ~2 GB GGUF
+#   scp -r models/gguf user@<arm64-host>:<path>/ArmInferX/models/   # ~470 MB GGUF
 #   # (the GGUF is gitignored, so it is not part of the repo clone)
 #
 # Usage (on the ARM64 host, from the repo root, Docker + Compose installed):
@@ -44,12 +44,12 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # Configuration / expected values (from the verified Q4_K_M model + STEP 14A)
 # ---------------------------------------------------------------------------
-EXPECTED_SHA256="626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d"
-EXPECTED_SIZE=2104932768
+EXPECTED_SHA256="74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db"
+EXPECTED_SIZE=491400032
 EXPECTED_LLAMA_CPP="0.3.34"
 EXPECTED_DEFAULT_ENGINE="llamacpp-optimized"
-EXPECTED_MODEL_ID="qwen2.5-3b-instruct-q4_k_m"
-MODEL_REL="models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf"
+EXPECTED_MODEL_ID="qwen2.5-0.5b-instruct-q4_k_m"
+MODEL_REL="models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf"
 SERVICE="backend"
 
 SKIP_BUILD=0
@@ -210,7 +210,7 @@ import urllib.request
 URL = "http://127.0.0.1:8000/generate"
 PROMPT = "Hello! Who are you?"
 ENGINE_ID = "llamacpp-optimized"
-EXPECTED_MODEL = "qwen2.5-3b-instruct-q4_k_m"
+EXPECTED_MODEL = "qwen2.5-0.5b-instruct-q4_k_m"
 
 def post(prompt):
     body = json.dumps({"prompt": prompt, "engine_id": ENGINE_ID}).encode("utf-8")
@@ -292,7 +292,7 @@ pass "real ARM64 inference succeeded (2/2 requests, all fields valid)"
 # ---------------------------------------------------------------------------
 echo
 echo "[9] Model inside the container"
-CONTAINER_MODEL="/app/models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf"
+CONTAINER_MODEL="/app/models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf"
 MODEL_INFO="$(EXEC_PY - "$CONTAINER_MODEL" <<'PY'
 import hashlib
 import os
@@ -339,7 +339,7 @@ from engines.llamacpp_optimized import (
     DEFAULT_TEMPERATURE,
     N_GPU_LAYERS,
 )
-expected = (2048, 8, 0, 0.0, 64)  # n_ctx, n_threads, n_gpu_layers, temperature, max_new_tokens
+expected = (1024, 2, 0, 0.0, 64)  # n_ctx, n_threads, n_gpu_layers, temperature, max_new_tokens
 actual = (DEFAULT_N_CTX, DEFAULT_N_THREADS, N_GPU_LAYERS, DEFAULT_TEMPERATURE, DEFAULT_MAX_NEW_TOKENS)
 if actual != expected:
     raise SystemExit(f"engine defaults drifted: {actual} != {expected}")
@@ -347,7 +347,7 @@ print(f"    n_ctx={DEFAULT_N_CTX} n_threads={DEFAULT_N_THREADS} "
       f"n_gpu_layers={N_GPU_LAYERS} temperature={DEFAULT_TEMPERATURE} "
       f"(greedy) max_new_tokens={DEFAULT_MAX_NEW_TOKENS}")
 PY
-pass "configuration preserved: n_ctx=2048, n_threads=8, n_gpu_layers=0, greedy, max_new_tokens=64"
+pass "configuration: n_ctx=1024, n_threads=2, n_gpu_layers=0, greedy, max_new_tokens=64"
 
 # ---------------------------------------------------------------------------
 # [12] Summary
@@ -362,7 +362,7 @@ echo "  llama-cpp-python  : $LLAMA_VERSION (source-built with STEP 14A flags)"
 echo "  model (container) : $CONTAINER_MODEL"
 echo "  model sha256      : $CONTAINER_SHA"
 echo "  default engine    : $EXPECTED_DEFAULT_ENGINE"
-echo "  config            : n_ctx=2048, n_threads=8, n_gpu_layers=0, greedy, max_new_tokens=64"
+echo "  config            : n_ctx=1024, n_threads=2, n_gpu_layers=0, greedy, max_new_tokens=64"
 echo "  benchmark         : NOT run (STEP 14B is deployment validation only)"
 echo "  comparisons       : none (no Windows/FP16/Arm64 comparisons produced)"
 echo "# Status: PASS"

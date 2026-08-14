@@ -35,7 +35,7 @@ FP16 model. The two servers must already be running (see
 ## E · Live llama.cpp inference (25 s)
 - Type: `Explain what an AI inference engine is.` → **Generate**.
 - *"This is the exact prompt from our saved benchmark. First request also
-  includes the one-time ~2 GB model load."*
+  includes the one-time ~470 MB model load."*
 
 ## F · Streaming response (15 s)
 - Watch tokens stream in (SSE). *"Each token arrives as a Server-Sent Event;

@@ -5,10 +5,10 @@ transcript (or `step14b.log`) back afterwards; the structured STEP 14B report
 is produced from it.
 
 > Expected values used throughout:
-> - model SHA-256: `626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d`
-> - model size: `2104932768` bytes
+> - model SHA-256: `74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db`
+> - model size: `491400032` bytes
 > - llama-cpp-python: `0.3.34` · image arch: `linux/arm64`
-> - default engine: `llamacpp-optimized` · engine defaults `2048 / 8 / 0 / 0.0 / 64`
+> - default engine: `llamacpp-optimized` · engine defaults `1024 / 2 / 0 / 0.0 / 64`
 
 ---
 
@@ -31,7 +31,7 @@ exact failing stage. Use `--skip-build` to reuse an already-built image.
 ```bash
 pwd                                   # must be the repo root
 git rev-parse --show-toplevel         # same path, or "not a git repo" (fine)
-ls -la models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf
+ls -la models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf
 ```
 
 If the model file is missing, copy it from the dev machine before continuing
@@ -55,10 +55,10 @@ docker compose version
 ### [2] Model validation (do not download/quantize/modify)
 
 ```bash
-sha256sum models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf
+sha256sum models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf
 ```
 
-Expected output ends with `626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d`.
+Expected output ends with `74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db`.
 
 ### [3] Build the ARM64 image
 
@@ -81,7 +81,7 @@ docker compose up -d backend
 docker compose exec backend ls -la /app/models/gguf/
 docker compose exec backend python -c "
 import hashlib, os
-p = '/app/models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf'
+p = '/app/models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf'
 print('size  =', os.path.getsize(p))
 h = hashlib.sha256()
 with open(p, 'rb') as f:
@@ -116,7 +116,7 @@ curl -s -X POST http://localhost:8000/generate \
 ```
 
 Expected fields: `status=success`, non-empty `response`, `engine_id=llamacpp-optimized`,
-`runtime=llama.cpp`, `model=qwen2.5-3b-instruct-q4_k_m`, `generated_tokens>0`,
+`runtime=llama.cpp`, `model=qwen2.5-0.5b-instruct-q4_k_m`, `generated_tokens>0`,
 `latency_ms>0`, `tokens_per_second>0`, `ttft_ms` when available. First request
 includes the one-time model load.
 
@@ -144,7 +144,7 @@ from engines.llamacpp_optimized import (
 )
 print(DEFAULT_N_CTX, DEFAULT_N_THREADS, N_GPU_LAYERS, DEFAULT_TEMPERATURE, DEFAULT_MAX_NEW_TOKENS)
 "
-# expect: 2048 8 0 0.0 64  (n_ctx, n_threads, n_gpu_layers, temperature/greedy, max_new_tokens)
+# expect: 1024 2 0 0.0 64  (n_ctx, n_threads, n_gpu_layers, temperature/greedy, max_new_tokens)
 ```
 
 ### [9] Baseline safety (mandatory)

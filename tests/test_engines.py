@@ -3,8 +3,8 @@
 Covers the ``InferenceEngine`` interface contract and the
 ``LlamaCppOptimizedEngine`` (llama.cpp/GGUF). No real model or GPU is needed:
 ``load_model`` is tested with a monkeypatched ``Llama`` class and generation is
-tested through a fake ``Llama`` so nothing is loaded from disk (the ~2 GB Q4_K_M
-GGUF must not be loaded on this 8 GB laptop).
+tested through a fake ``Llama`` so nothing is loaded from disk (the ~470 MB
+Q4_K_M GGUF must not be loaded during tests).
 """
 
 import importlib
@@ -75,8 +75,8 @@ def test_engine_info_serialization():
 # ---------------------------------------------------------------------------
 # LlamaCppOptimizedEngine (llama.cpp / GGUF)
 #
-# Validated WITHOUT loading the real ~2 GB Q4_K_M GGUF (this laptop has only
-# 7.6 GiB RAM): a fake ``Llama`` class records the load configuration and
+# Validated WITHOUT loading the real ~470 MB Q4_K_M GGUF: a fake ``Llama``
+# class records the load configuration and
 # emits a deterministic token stream, so import / path / wiring / metadata /
 # result-shape are all verified with zero model I/O.
 # ---------------------------------------------------------------------------
@@ -152,11 +152,10 @@ def test_llamacpp_engine_identity_and_default_path():
     assert LlamaCppOptimizedEngine.runtime == "llama.cpp"
     assert LlamaCppOptimizedEngine.supports_streaming is True
 
-    # Default model path points at the validated Q4_K_M GGUF (the engine's
-    # default was switched from the FP16 split to the single-file Q4_K_M in
-    # STEP 9; the file must exist on disk).
+    # Default model path points at the validated Q4_K_M GGUF (Qwen2.5-0.5B-
+    # Instruct, single-file Q4_K_M; the file must exist on disk).
     assert DEFAULT_MODEL_PATH.name == (
-        "qwen2.5-3b-instruct-q4_k_m.gguf"
+        "qwen2.5-0.5b-instruct-q4_k_m.gguf"
     ), DEFAULT_MODEL_PATH
     assert DEFAULT_MODEL_PATH.is_file(), f"GGUF not found at {DEFAULT_MODEL_PATH}"
     print(
@@ -174,7 +173,7 @@ def test_llamacpp_engine_unloaded_reports_metadata_without_model():
     assert info.supports_streaming is True
     assert info.loaded is False
     assert info.model_id is None
-    assert info.max_context == 2048  # declared default context
+    assert info.max_context == 1024  # declared default context
 
     for operation in (
         lambda: engine.generate("hi"),
@@ -217,7 +216,7 @@ def test_llamacpp_engine_load_model_wiring():
     info = engine.get_model_info()
     assert info.loaded is True
     # Single-file default (Q4_K_M) keeps its full stem as the model id.
-    assert info.model_id == "qwen2.5-3b-instruct-q4_k_m"
+    assert info.model_id == "qwen2.5-0.5b-instruct-q4_k_m"
     assert info.max_context == 1024
     assert info.extra["n_gpu_layers"] == 0
     print("PASS: LlamaCppOptimizedEngine.load_model wiring (CPU-only)")

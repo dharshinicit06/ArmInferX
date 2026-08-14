@@ -86,7 +86,7 @@ The single holder of loaded engine instances:
 - **Lazy loading** — `get(engine_id)` constructs the engine through the registry
   on first use only. Startup and `/health` never touch a model.
 - **Caching** — loaded engines are kept in `self._loaded` and reused for every
-  request; the ~2 GB Q4_K_M model is loaded exactly once per process.
+  request; the ~470 MB Q4_K_M model is loaded exactly once per process.
 - **Thread safety** — a `threading.Lock` around the load prevents concurrent
   first requests from double-loading a model.
 - **Engine selection** — `resolve(None)` falls back to the configured default
@@ -103,7 +103,7 @@ the uniform entry point used by both the HTTP layer and the benchmark driver.
 | | `LlamaCppOptimizedEngine` |
 |---|---|
 | File | `engines/llamacpp_optimized.py` |
-| Model | `models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf` |
+| Model | `models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf` |
 | Loads | GGUF via `llama_cpp.Llama`, CPU-only |
 | Streaming | `stream_generate()` → `StreamChunk`s |
 | TTFT | first streamed token timing |
@@ -160,8 +160,9 @@ Q4_K_M in the optimization report (a footprint comparison, not a speed claim).
 |---|---|---|
 | `ARMINFERX_DEFAULT_ENGINE` | `llamacpp-optimized` | engine used when a request omits `engine_id` |
 
-Engine defaults (llama.cpp) are fixed for comparability: `n_ctx=2048`,
-`n_threads=8`, `n_gpu_layers=0`, greedy decoding, `max_new_tokens=64`.
+Engine defaults (llama.cpp) are `n_ctx=1024`, `n_threads=2`, `n_gpu_layers=0`,
+greedy decoding, `max_new_tokens=64` — tuned for 1 GB RAM / 2 vCPU hosts such
+as Railway.
 
 ## Source of truth
 

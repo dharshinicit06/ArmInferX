@@ -5,6 +5,14 @@ submission. Everything below was verified on this machine with the **Q4_K_M
 llama.cpp** engine only. No FP16 inference, no Docker/WSL, and no ARM64
 execution were performed.
 
+> **Update (2026-08-14):** the deployed model switched to
+> **Qwen2.5-0.5B-Instruct Q4_K_M** (`qwen2.5-0.5b-instruct-q4_k_m.gguf`, 491 MB)
+> so the deployment fits Railway's 1 GB RAM / 2 vCPU limit (engine defaults
+> `n_ctx=1024`, `n_threads=2`). The model-integrity table below reflects the
+> current file. The benchmark evidence numbers in this report were measured
+> with the previous 3B model; re-run `scripts/run_optimization_report.py` to
+> refresh `results/optimization_report.json` and the bundled dashboard copy.
+
 ---
 
 ## Environment
@@ -40,7 +48,7 @@ modified.
 All confirmed with `git check-ignore -v`:
 
 ```
-.gitignore:160:models/**/*.gguf        models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf
+.gitignore:160:models/**/*.gguf        models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf
 .gitignore:178:models/**/.cache/       models/gguf/.cache/
 .gitignore:186:results/                results/
 .gitignore:50:.venv/                   backend/.venv/
@@ -48,16 +56,16 @@ All confirmed with `git check-ignore -v`:
 ```
 
 - `git add -n models/` staged **nothing** (all model files and cache ignored).
-- Largest file that could be staged is a KB-scale source file — the ~2 GB GGUF
-  and ~6.5 GB FP16 shards **cannot** accidentally enter a commit.
+- Largest file that could be staged is a KB-scale source file — the ~470 MB
+  GGUF and ~6.5 GB FP16 shards **cannot** accidentally enter a commit.
 
 ## Model integrity
 
 | Check | Result |
 |---|---|
-| File exists | ✅ `models/gguf/qwen2.5-3b-instruct-q4_k_m.gguf` |
-| Exact size | ✅ 2,104,932,768 bytes |
-| SHA-256 | ✅ `626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d` (matches expected) |
+| File exists | ✅ `models/gguf/qwen2.5-0.5b-instruct-q4_k_m.gguf` |
+| Exact size | ✅ 491,400,032 bytes |
+| SHA-256 | ✅ `74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db` (matches expected) |
 
 Model was **not** modified, downloaded, or re-quantized.
 
@@ -101,7 +109,7 @@ prompt `"What is an AI inference engine in one sentence?"`:
 |---|---|
 | `engine_id` | `llamacpp-optimized` ✅ |
 | `runtime` | `llama.cpp` ✅ |
-| `model` | `qwen2.5-3b-instruct-q4_k_m` ✅ |
+| `model` | `qwen2.5-0.5b-instruct-q4_k_m` ✅ |
 | `response` | non-empty, coherent ✅ |
 | `latency_ms` | 9275.5 (engine inference time only — the model load happens before the measured call; the ~16.9 s request wall-time includes it) ✅ |
 | `ttft_ms` | 1385.84 (first request; warmed-engine mean is 156.5 ms) ✅ |

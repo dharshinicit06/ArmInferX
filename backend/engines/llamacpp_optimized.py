@@ -54,13 +54,14 @@ DEFAULT_MODEL_PATH = (
     PROJECT_ROOT
     / "models"
     / "gguf"
-    / "qwen2.5-3b-instruct-q4_k_m.gguf"
+    / "qwen2.5-0.5b-instruct-q4_k_m.gguf"
 )
 
-# Safe defaults for the current 8 GB development laptop (CPU-only). These are
-# deliberately fixed so future benchmark runs are comparable; do not tune yet.
-DEFAULT_N_CTX = 2048
-DEFAULT_N_THREADS = 8
+# Tuned for Railway's 1 GB RAM / 2 vCPU limit (CPU-only): n_ctx=1024 keeps the
+# KV cache tiny and n_threads=2 matches the 2 vCPU allocation, so the ~470 MB
+# Q4_K_M model plus runtime overhead fits comfortably in 1 GB RAM.
+DEFAULT_N_CTX = 1024
+DEFAULT_N_THREADS = 2
 DEFAULT_TEMPERATURE = 0.0
 DEFAULT_MAX_NEW_TOKENS = 64
 N_GPU_LAYERS = 0  # CPU-only: never offload to a GPU
@@ -190,7 +191,7 @@ class LlamaCppOptimizedEngine(InferenceEngine):
         except MemoryError as exc:
             raise LlamaCppModelLoadError(
                 f"Not enough memory to load {path.name} "
-                "(this machine has 7.6 GiB total)."
+                "(reduce n_ctx or use a smaller model)."
             ) from exc
         except Exception as exc:  # noqa: BLE001 - normalize any load failure
             raise LlamaCppModelLoadError(
@@ -214,9 +215,9 @@ class LlamaCppOptimizedEngine(InferenceEngine):
         """Derive a stable model id from the GGUF filename.
 
         Strips a split-shard suffix when present, so both shards of
-        ``qwen2.5-3b-instruct-fp16-00001-of-00002.gguf`` identify as
-        ``qwen2.5-3b-instruct-fp16``; single-file models such as the default
-        ``qwen2.5-3b-instruct-q4_k_m.gguf`` keep their full stem.
+        ``qwen2.5-0.5b-instruct-fp16-00001-of-00002.gguf`` identify as
+        ``qwen2.5-0.5b-instruct-fp16``; single-file models such as the default
+        ``qwen2.5-0.5b-instruct-q4_k_m.gguf`` keep their full stem.
         """
         return re.sub(r"-\d{5}-of-\d{5}$", "", path.stem)
 
